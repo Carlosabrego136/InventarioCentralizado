@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { getSession } from '../lib/auth';
+
+export async function getServerSideProps({ req }) {
+  const session = getSession(req);
+  if (!session) return { redirect: { destination: '/login', permanent: false } };
+  return { props: {} };
+}
 
 export default function Inventario() {
   const router = useRouter();

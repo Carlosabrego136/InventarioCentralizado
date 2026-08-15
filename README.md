@@ -1,8 +1,9 @@
-# Sistema de Inventario Palafox
+# Sistema de Inventario Palafox (panel de Cristian)
 
-Sistema real de punto de venta (POS) e inventario multitienda en tiempo real
-para Cristian / Palafox: 1 Bodega Central + 3 tiendas, conectadas a la misma
-base de datos Postgres en Aiven.
+Este es el panel de control para Cristian: Resumen, Inventario, Traspasos y
+Alertas de las 4 ubicaciones (Bodega Central + 3 tiendas). El punto de venta
+que usan los trabajadores vive en un proyecto APARTE (palafox-pos), que
+escribe en esta misma base de datos de Aiven.
 
 No es un demo — cada acción (venta, traspaso, ajuste de mínimo) escribe
 directo en la base de datos y persiste.

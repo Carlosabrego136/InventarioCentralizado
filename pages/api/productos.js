@@ -1,9 +1,12 @@
 import { query } from '../../lib/db';
+import { requireSession } from '../../lib/auth';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Método no permitido' });
   }
+  const session = requireSession(req, res);
+  if (!session) return;
   try {
     const { sedeId } = req.query;
     if (sedeId) {

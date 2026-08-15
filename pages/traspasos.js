@@ -1,4 +1,11 @@
 import { useEffect, useState } from 'react';
+import { getSession } from '../lib/auth';
+
+export async function getServerSideProps({ req }) {
+  const session = getSession(req);
+  if (!session) return { redirect: { destination: '/login', permanent: false } };
+  return { props: {} };
+}
 
 export default function Traspasos() {
   const [sedes, setSedes] = useState([]);

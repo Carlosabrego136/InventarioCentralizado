@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { getSession } from '../lib/auth';
+
+export async function getServerSideProps({ req }) {
+  const session = getSession(req);
+  if (!session) return { redirect: { destination: '/login', permanent: false } };
+  return { props: {} };
+}
 
 export default function Home() {
   const [sedes, setSedes] = useState([]);
   const [resumen, setResumen] = useState({});
   const [alertas, setAlertas] = useState([]);
+  const [actividad, setActividad] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,12 +33,32 @@ export default function Home() {
 
       const alertasRes = await fetch('/api/alertas').then((r) => r.json());
       setAlertas(Array.isArray(alertasRes) ? alertasRes.slice(0, 5) : []);
+
+      const actividadRes = await fetch('/api/actividad').then((r) => r.json());
+      const actById = {};
+      (Array.isArray(actividadRes) ? actividadRes : []).forEach((a) => {
+        actById[a.sede_id] = a.ultima_venta;
+      });
+      setActividad(actById);
+
       setLoading(false);
     }
     load();
   }, []);
 
   if (loading) return <div className="page-loading">Cargando inventario…</div>;
+
+  function actividadTexto(sedeId) {
+    const fecha = actividad[sedeId];
+    if (!fecha) return 'Sin ventas registradas';
+    const mins = Math.round((Date.now() - new Date(fecha).getTime()) / 60000);
+    if (mins < 1) return 'Última venta: justo ahora';
+    if (mins < 60) return `Última venta: hace ${mins} min`;
+    const horas = Math.round(mins / 60);
+    if (horas < 24) return `Última venta: hace ${horas} h`;
+    const dias = Math.round(horas / 24);
+    return `Última venta: hace ${dias} d`;
+  }
 
   return (
     <div>
@@ -56,6 +84,7 @@ export default function Home() {
                 {(resumen[s.id]?.bajos ?? 0) === 0 ? 'OK' : `${resumen[s.id].bajos} bajo mínimo`}
               </div>
             </div>
+            {s.tipo === 'tienda' && <div className="sede-activity">{actividadTexto(s.id)}</div>}
           </Link>
         ))}
       </div>

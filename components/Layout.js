@@ -5,12 +5,18 @@ const NAV = [
   { href: '/', label: 'Resumen', icon: '◆' },
   { href: '/inventario', label: 'Inventario', icon: '▤' },
   { href: '/traspasos', label: 'Traspasos', icon: '⇄' },
-  { href: '/pos', label: 'Punto de venta', icon: '⎘' },
   { href: '/alertas', label: 'Alertas', icon: '!' },
 ];
 
 export default function Layout({ children }) {
   const router = useRouter();
+
+  if (router.pathname === '/login') return <>{children}</>;
+
+  async function salir() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
+  }
 
   return (
     <div className="layout">
@@ -29,7 +35,11 @@ export default function Layout({ children }) {
             </Link>
           ))}
         </nav>
-        <div className="sidebar-foot">Bodega Central + 3 tiendas<br />conectadas en tiempo real.</div>
+        <div className="sidebar-foot">
+          Bodega Central + 3 tiendas<br />conectadas en tiempo real.
+          <br /><br />
+          <button className="logout-link" onClick={salir}>Cerrar sesión</button>
+        </div>
       </aside>
 
       <main className="main">{children}</main>
@@ -45,6 +55,10 @@ export default function Layout({ children }) {
             <span className="bn-label">{item.label}</span>
           </Link>
         ))}
+        <button className="bn-item" onClick={salir}>
+          <span className="ic">⎋</span>
+          <span className="bn-label">Salir</span>
+        </button>
       </nav>
     </div>
   );
