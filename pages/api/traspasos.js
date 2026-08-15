@@ -1,6 +1,6 @@
-const { query, withTransaction } = require('../../lib/db');
+import { query, withTransaction } from '../../lib/db';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const { rows } = await query(
@@ -77,4 +77,4 @@ module.exports = async function handler(req, res) {
   }
 
   return res.status(405).json({ error: 'Método no permitido' });
-};
+}

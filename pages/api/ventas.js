@@ -1,6 +1,6 @@
-const { withTransaction } = require('../../lib/db');
+import { withTransaction } from '../../lib/db';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
 
   const { sedeId, items } = req.body;
@@ -66,4 +66,4 @@ module.exports = async function handler(req, res) {
     console.error(err);
     res.status(400).json({ error: err.message || 'Error al registrar la venta' });
   }
-};
+}

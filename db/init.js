@@ -5,15 +5,12 @@ const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
 
-async function main() {
-  if (!process.env.DATABASE_URL) {
+async function main(){
+  if(!process.env.DATABASE_URL){
     console.error('Falta DATABASE_URL. Copia .env.example a .env.local y pon tu cadena de conexión de Aiven.');
     process.exit(1);
   }
-
-  // Quitamos ?sslmode=... de la URL por la misma razón que en lib/db.js:
-  // evita el error "self signed certificate in certificate chain" con Aiven.
-  const connectionString = process.env.DATABASE_URL.split('?')[0];
+  const connectionString = (process.env.DATABASE_URL || '').split('?')[0];
   const pool = new Pool({
     connectionString,
     ssl: { rejectUnauthorized: false },
