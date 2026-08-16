@@ -95,6 +95,19 @@ palafox-inventario/
 3. **Roles de acceso** — login simple para diferenciar el panel de Cristian
    (bodega) del acceso de cada tienda.
 
+## Limpiar el catálogo de prueba
+
+Cuando ya tengas el catálogo real (CSV de Cristian) listo para cargar, borra
+todo lo de prueba con:
+
+```bash
+npm run db:limpiar
+```
+
+Esto vacía productos, inventario, traspasos, ventas y la bitácora — las 4
+sedes (Bodega + 3 tiendas) se quedan intactas, listas para recibir productos
+de verdad. Es un paso manual, no se corre solo.
+
 ## Ya incluido en esta versión
 
 - **Catálogo por tienda de verdad**: cada tienda (y bodega) tiene su propio catálogo — un producto creado en una tienda NO aparece en las demás a menos que se le agregue explícitamente. Al crear un producto desde este sistema, eliges en qué tienda(s) aparece (botones "Bodega / Tienda 1 / Tienda 2 / Tienda 3").
@@ -104,5 +117,9 @@ palafox-inventario/
 - **Actividad**: además de verse en tiempo real, ahora tiene botón para limpiar todo el historial.
 - **Traspasos**: si mandas un producto a una tienda que no lo tenía en su catálogo, se le da de alta automáticamente ahí.
 - **Fechas más detalladas**: en Reportes y Actividad, cada fecha muestra el día de la semana chico arriba (LUNES, MARTES, etc.) y la fecha/hora completa abajo.
+
+- **Guardado por lote**: en Inventario y Productos, los campos ya no se guardan solos al salir del cuadro — ahora hay un botón "Guardar cambios" que se enciende solo cuando detecta algo sin guardar, y aplica todo junto al presionarlo.
+- **Ayuda en pantalla**: cajitas explicando qué es SKU, Stock y Mínimo, justo donde se usan.
+- **`npm run db:limpiar`**: borra el catálogo de prueba (productos, inventario, ventas) para arrancar limpio con datos reales, sin tocar las sedes.
 
 ⚠️ Si ya tenías la base de datos inicializada de antes, corre `npm run db:init` de nuevo — es seguro repetirlo y agrega las columnas nuevas (`activo`, `alerta_desde` en `inventario_sedes`).

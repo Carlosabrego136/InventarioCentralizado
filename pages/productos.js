@@ -12,10 +12,12 @@ const UNIDADES = ['kg', 'gr', 'lt', 'pza'];
 export default function Productos() {
   const [sedes, setSedes] = useState([]);
   const [productos, setProductos] = useState([]);
-  const [membresias, setMembresias] = useState([]); // [{sede_id, producto_id, activo}]
+  const [membresias, setMembresias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [nuevo, setNuevo] = useState({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', sedes: [] });
   const [msg, setMsg] = useState(null);
+  const [pendientes, setPendientes] = useState({}); // { [id]: {nombre, unidadMedida, precioVenta} }
+  const [guardando, setGuardando] = useState(false);
 
   function cargar() {
     Promise.all([
@@ -73,16 +75,40 @@ export default function Productos() {
     });
     const data = await res.json();
     if (!res.ok) { setMsg({ text: data.error || 'No se pudo crear', err: true }); return; }
-    setMsg({ text: `"${data.nombre}" creado.`, err: false });
+    setMsg({ text: `"${data.nombre}" creado. Ahora entra a Inventario en cada tienda para ponerle el stock inicial.`, err: false });
     setNuevo({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', sedes: [] });
     cargar();
   }
 
-  async function actualizar(id, campo, valor) {
+  function editarCampo(id, campo, valor) {
+    setPendientes((p) => ({ ...p, [id]: { ...p[id], [campo]: valor } }));
+  }
+
+  const hayPendientes = Object.keys(pendientes).length > 0;
+
+  async function guardarCambios() {
+    setGuardando(true);
+    for (const [id, cambios] of Object.entries(pendientes)) {
+      const body = { id: Number(id) };
+      if (cambios.nombre !== undefined) body.nombre = cambios.nombre;
+      if (cambios.unidadMedida !== undefined) body.unidadMedida = cambios.unidadMedida;
+      if (cambios.precioVenta !== undefined) body.precioVenta = parseFloat(cambios.precioVenta);
+      await fetch('/api/productos', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    }
+    setPendientes({});
+    setGuardando(false);
+    cargar();
+  }
+
+  async function reactivar(id) {
     await fetch('/api/productos', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, [campo]: valor }),
+      body: JSON.stringify({ id, activo: true }),
     });
     cargar();
   }
@@ -102,6 +128,11 @@ export default function Productos() {
 
       <section className="panel">
         <h2 className="panel-title">Nuevo producto</h2>
+        <div className="help-box">
+          <strong>SKU</strong>: código interno opcional, solo para identificarlo (puedes dejarlo vacío).<br/>
+          <strong>Precio</strong>: el precio de venta base — se puede ajustar puntualmente al cobrar sin cambiar este valor general.<br/>
+          Después de crearlo, entra a <strong>Inventario</strong> en cada tienda elegida para ponerle el stock inicial (nace en 0).
+        </div>
         <form className="form-row" onSubmit={crear}>
           <div>
             <label>SKU (opcional)</label>
@@ -141,54 +172,77 @@ export default function Productos() {
       <section className="panel">
         <h2 className="panel-title">Catálogo completo</h2>
         {loading ? <p className="empty-state">Cargando…</p> : (
-          <table>
-            <thead>
-              <tr>
-                <th>SKU</th><th>Nombre</th><th>Unidad</th><th className="num">Precio</th>
-                <th>En qué tiendas</th><th>Estado</th><th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {productos.map((p) => (
-                <tr key={p.id} style={{ opacity: p.activo ? 1 : 0.5 }}>
-                  <td className="mono dim">{p.sku_codigo || '—'}</td>
-                  <td>
-                    <input defaultValue={p.nombre} onBlur={(e) => e.target.value !== p.nombre && actualizar(p.id, 'nombre', e.target.value)} />
-                  </td>
-                  <td>
-                    <select defaultValue={p.unidad_medida} onChange={(e) => actualizar(p.id, 'unidadMedida', e.target.value)}>
-                      {UNIDADES.map((u) => <option key={u} value={u}>{u}</option>)}
-                    </select>
-                  </td>
-                  <td className="num">
-                    <input className="min-input" type="number" min="0" step="0.01" defaultValue={p.precio_venta}
-                      onBlur={(e) => actualizar(p.id, 'precioVenta', parseFloat(e.target.value))} />
-                  </td>
-                  <td>
-                    <div className="sede-pill-row">
-                      {sedes.map((s) => {
-                        const activo = tieneEnSede(p.id, s.id);
-                        return (
-                          <span key={s.id} className={`sede-pill ${activo ? 'on' : ''}`}
-                            onClick={() => toggleSede(p.id, s.id, activo)}>
-                            {s.nombre.split('·')[0].trim()}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </td>
-                  <td><span className={`badge ${p.activo ? 'ok' : 'low'}`}>{p.activo ? 'ACTIVO' : 'DE BAJA'}</span></td>
-                  <td>
-                    {p.activo ? (
-                      <button className="btn small secondary" onClick={() => eliminarGlobal(p.id, p.nombre)}>Baja total</button>
-                    ) : (
-                      <button className="btn small" onClick={() => actualizar(p.id, 'activo', true)}>Reactivar</button>
-                    )}
-                  </td>
+          <>
+            <table>
+              <thead>
+                <tr>
+                  <th>SKU</th><th>Nombre</th><th>Unidad</th><th className="num">Precio</th>
+                  <th>En qué tiendas</th><th>Estado</th><th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {productos.map((p) => {
+                  const pend = pendientes[p.id] || {};
+                  return (
+                    <tr key={p.id} style={{ opacity: p.activo ? 1 : 0.5 }}>
+                      <td className="mono dim">{p.sku_codigo || '—'}</td>
+                      <td>
+                        <input
+                          value={pend.nombre !== undefined ? pend.nombre : p.nombre}
+                          onChange={(e) => editarCampo(p.id, 'nombre', e.target.value)}
+                        />
+                      </td>
+                      <td>
+                        <select
+                          value={pend.unidadMedida !== undefined ? pend.unidadMedida : p.unidad_medida}
+                          onChange={(e) => editarCampo(p.id, 'unidadMedida', e.target.value)}
+                        >
+                          {UNIDADES.map((u) => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                      </td>
+                      <td className="num">
+                        <input
+                          className="min-input" type="number" min="0" step="0.01"
+                          value={pend.precioVenta !== undefined ? pend.precioVenta : p.precio_venta}
+                          onChange={(e) => editarCampo(p.id, 'precioVenta', e.target.value)}
+                        />
+                      </td>
+                      <td>
+                        <div className="sede-pill-row">
+                          {sedes.map((s) => {
+                            const activo = tieneEnSede(p.id, s.id);
+                            return (
+                              <span key={s.id} className={`sede-pill ${activo ? 'on' : ''}`}
+                                onClick={() => toggleSede(p.id, s.id, activo)}>
+                                {s.nombre.split('·')[0].trim()}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </td>
+                      <td><span className={`badge ${p.activo ? 'ok' : 'low'}`}>{p.activo ? 'ACTIVO' : 'DE BAJA'}</span></td>
+                      <td>
+                        {p.activo ? (
+                          <button className="btn small secondary" onClick={() => eliminarGlobal(p.id, p.nombre)}>Baja total</button>
+                        ) : (
+                          <button className="btn small" onClick={() => reactivar(p.id)}>Reactivar</button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            <div className="save-bar">
+              <span className="dim" style={{ fontSize: 13.5 }}>
+                {hayPendientes ? 'Tienes cambios sin guardar' : 'Todo guardado'}
+              </span>
+              <button className="btn" disabled={!hayPendientes || guardando} onClick={guardarCambios}>
+                {guardando ? 'Guardando…' : 'Guardar cambios'}
+              </button>
+            </div>
+          </>
         )}
       </section>
     </div>

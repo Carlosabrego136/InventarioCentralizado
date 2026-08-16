@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "db:init": "node db/init.js"
+    "db:init": "node db/init.js",
+    "db:limpiar": "node db/limpiar.js"
   },
   "dependencies": {
     "next": "13.5.6",
