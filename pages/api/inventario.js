@@ -29,20 +29,23 @@ export default async function handler(req, res) {
 
   if (req.method === 'PATCH') {
     try {
-      const { productoId, stockMinimo } = req.body;
-      if (productoId === undefined || stockMinimo === undefined) {
-        return res.status(400).json({ error: 'Faltan datos' });
+      const { productoId, stockMinimo, stockActual } = req.body;
+      if (productoId === undefined) return res.status(400).json({ error: 'Faltan datos' });
+      if (stockMinimo === undefined && stockActual === undefined) {
+        return res.status(400).json({ error: 'Nada que actualizar' });
       }
       await query(
         `INSERT INTO inventario_sedes (sede_id, producto_id, stock_actual, stock_minimo)
-         VALUES ($1, $2, 0, $3)
-         ON CONFLICT (sede_id, producto_id) DO UPDATE SET stock_minimo = EXCLUDED.stock_minimo`,
-        [sedeId, productoId, stockMinimo]
+         VALUES ($1, $2, COALESCE($4, 0), COALESCE($3, 0))
+         ON CONFLICT (sede_id, producto_id) DO UPDATE SET
+           stock_minimo = COALESCE($3, inventario_sedes.stock_minimo),
+           stock_actual = COALESCE($4, inventario_sedes.stock_actual)`,
+        [sedeId, productoId, stockMinimo === undefined ? null : stockMinimo, stockActual === undefined ? null : stockActual]
       );
       return res.status(200).json({ ok: true });
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ error: 'Error al actualizar el mínimo' });
+      return res.status(500).json({ error: 'Error al actualizar el inventario' });
     }
   }
 

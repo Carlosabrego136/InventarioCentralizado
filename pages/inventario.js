@@ -50,6 +50,21 @@ export default function Inventario() {
       .then(setData);
   }
 
+  async function corregirStock(productoId, actual) {
+    const val = prompt('Corregir stock (por ejemplo, después de un conteo físico):', actual);
+    if (val === null) return;
+    const n = parseFloat(val);
+    if (isNaN(n) || n < 0) return;
+    await fetch(`/api/inventario?sedeId=${sedeId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productoId, stockActual: n }),
+    });
+    fetch(`/api/inventario?sedeId=${sedeId}`)
+      .then((r) => r.json())
+      .then(setData);
+  }
+
   return (
     <div>
       <header className="topbar">
@@ -87,6 +102,7 @@ export default function Inventario() {
                 <th>Stock</th>
                 <th className="num">Mínimo</th>
                 <th>Estado</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -112,6 +128,11 @@ export default function Inventario() {
                     </td>
                     <td>
                       <span className={`badge ${bajo ? 'low' : 'ok'}`}>{bajo ? 'BAJO MÍNIMO' : 'OK'}</span>
+                    </td>
+                    <td>
+                      <button className="btn small secondary" onClick={() => corregirStock(p.producto_id, p.stock_actual)}>
+                        Corregir
+                      </button>
                     </td>
                   </tr>
                 );

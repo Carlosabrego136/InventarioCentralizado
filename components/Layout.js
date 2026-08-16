@@ -4,7 +4,9 @@ import { useRouter } from 'next/router';
 const NAV = [
   { href: '/', label: 'Resumen', icon: '◆' },
   { href: '/inventario', label: 'Inventario', icon: '▤' },
+  { href: '/productos', label: 'Productos', icon: '✎' },
   { href: '/traspasos', label: 'Traspasos', icon: '⇄' },
+  { href: '/reportes', label: 'Reportes', icon: '▦' },
   { href: '/alertas', label: 'Alertas', icon: '!' },
 ];
 

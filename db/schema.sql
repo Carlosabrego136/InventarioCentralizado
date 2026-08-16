@@ -55,3 +55,12 @@ CREATE TABLE IF NOT EXISTS detalle_ventas (
     cantidad DECIMAL(10,3) NOT NULL,
     subtotal DECIMAL(10,2) NOT NULL
 );
+
+-- ============================================================
+-- Migración: control total de catálogo + venta libre + reportes
+-- Segura de correr varias veces (IF NOT EXISTS en todo).
+-- ============================================================
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE detalle_ventas ADD COLUMN IF NOT EXISTS nombre_libre VARCHAR(150);
+ALTER TABLE detalle_ventas ADD COLUMN IF NOT EXISTS unidad_libre VARCHAR(20);
+ALTER TABLE detalle_ventas ADD COLUMN IF NOT EXISTS precio_unitario DECIMAL(10,2);

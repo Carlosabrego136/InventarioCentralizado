@@ -88,10 +88,19 @@ palafox-inventario/
 
 ## Siguientes pasos sugeridos (cómo ir escalando)
 
-1. **Catálogo real** — reemplazar `db/seed.sql` con los productos de Cristian.
+1. **Catálogo real** — reemplazar `db/seed.sql` con los productos de Cristian, o usar la página **Productos** ya integrada para darlos de alta uno por uno.
 2. **Notificación a Cristian** — conectar `/api/alertas` a un webhook de
    WhatsApp Business (vía n8n) para que le llegue la alerta sin tener que
    abrir el panel.
-3. **Reporte de ventas** — página con historial de ventas por sede y por día.
-4. **Roles de acceso** — login simple para diferenciar el panel de Cristian
+3. **Roles de acceso** — login simple para diferenciar el panel de Cristian
    (bodega) del acceso de cada tienda.
+
+## Ya incluido en esta versión
+
+- **Login** con `ADMIN_PASSWORD` — nadie ve nada sin la contraseña de Cristian.
+- **Productos**: alta, edición de precio/unidad/catálogo reducido, y baja lógica (nunca se borra el historial de ventas asociado).
+- **Inventario**: además del stock mínimo, ahora se puede **corregir el stock real** de cualquier producto en cualquier sede (para conteos físicos).
+- **Reportes**: historial de ventas filtrable por tienda y rango de fechas, con totales.
+- **Actividad por tienda**: en Resumen, se ve "Última venta: hace X" por cada tienda.
+
+⚠️ Si ya tenías la base de datos inicializada de antes, corre `npm run db:init` de nuevo — es seguro repetirlo (usa `IF NOT EXISTS` en todo) y así se agregan las columnas nuevas (`activo`, `nombre_libre`, `unidad_libre`, `precio_unitario`) que necesitan estas funciones.
