@@ -35,33 +35,42 @@ export default async function handler(req, res) {
 
     try {
       const result = await withTransaction(async (client) => {
-        const destSedeRes = await client.query('SELECT catalogo_reducido FROM sedes WHERE id=$1', [destinoId]);
-        if (destSedeRes.rows.length === 0) throw new Error('Sede destino no encontrada');
-
-        if (destSedeRes.rows[0].catalogo_reducido) {
-          const prodRes = await client.query('SELECT disponible_reducido FROM productos WHERE id=$1', [productoId]);
-          if (!prodRes.rows[0]?.disponible_reducido) {
-            throw new Error('Ese producto no está habilitado para el catálogo reducido de esta tienda');
-          }
-        }
-
         const origenRes = await client.query(
-          'SELECT stock_actual FROM inventario_sedes WHERE sede_id=$1 AND producto_id=$2 FOR UPDATE',
+          'SELECT stock_actual, stock_minimo, alerta_desde FROM inventario_sedes WHERE sede_id=$1 AND producto_id=$2 FOR UPDATE',
           [origenId, productoId]
         );
-        const stockOrigen = Number(origenRes.rows[0]?.stock_actual || 0);
-        if (stockOrigen < cantidad) throw new Error('Stock insuficiente en la sede de origen');
+        const stockOrigenAntes = Number(origenRes.rows[0]?.stock_actual || 0);
+        const minimoOrigen = Number(origenRes.rows[0]?.stock_minimo || 0);
+        if (stockOrigenAntes < cantidad) throw new Error('Stock insuficiente en la sede de origen');
+        const stockOrigenDespues = stockOrigenAntes - cantidad;
+        const bajoAntesOrigen = minimoOrigen > 0 && stockOrigenAntes <= minimoOrigen;
+        const bajoDespuesOrigen = minimoOrigen > 0 && stockOrigenDespues <= minimoOrigen;
 
         await client.query(
-          'UPDATE inventario_sedes SET stock_actual = stock_actual - $1 WHERE sede_id=$2 AND producto_id=$3',
-          [cantidad, origenId, productoId]
+          `UPDATE inventario_sedes SET stock_actual = $1,
+             alerta_desde = ${bajoDespuesOrigen && !bajoAntesOrigen ? 'NOW()' : bajoDespuesOrigen ? 'alerta_desde' : 'NULL'}
+           WHERE sede_id=$2 AND producto_id=$3`,
+          [stockOrigenDespues, origenId, productoId]
         );
 
+        // El traspaso automáticamente le da de alta el producto en la
+        // tienda destino si todavía no lo tenía en su catálogo.
+        const destRes = await client.query(
+          'SELECT stock_actual, stock_minimo FROM inventario_sedes WHERE sede_id=$1 AND producto_id=$2 FOR UPDATE',
+          [destinoId, productoId]
+        );
+        const stockDestAntes = Number(destRes.rows[0]?.stock_actual || 0);
+        const minimoDest = Number(destRes.rows[0]?.stock_minimo || 0);
+        const stockDestDespues = stockDestAntes + cantidad;
+        const bajoDespuesDest = minimoDest > 0 && stockDestDespues <= minimoDest;
+
         await client.query(
-          `INSERT INTO inventario_sedes (sede_id, producto_id, stock_actual, stock_minimo)
-           VALUES ($1, $2, $3, 0)
+          `INSERT INTO inventario_sedes (sede_id, producto_id, stock_actual, stock_minimo, activo, alerta_desde)
+           VALUES ($1, $2, $3, 0, true, ${bajoDespuesDest ? 'NOW()' : 'NULL'})
            ON CONFLICT (sede_id, producto_id) DO UPDATE
-           SET stock_actual = inventario_sedes.stock_actual + EXCLUDED.stock_actual`,
+           SET stock_actual = inventario_sedes.stock_actual + EXCLUDED.stock_actual,
+               activo = true,
+               alerta_desde = ${bajoDespuesDest ? 'COALESCE(inventario_sedes.alerta_desde, NOW())' : 'NULL'}`,
           [destinoId, productoId, cantidad]
         );
 

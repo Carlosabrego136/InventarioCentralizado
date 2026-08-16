@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatFechaHora } from '../lib/format';
 import { getSession } from '../lib/auth';
 
 export async function getServerSideProps({ req }) {
@@ -42,10 +43,15 @@ export default function Alertas() {
             {grupo.items.map((a) => (
               <div className="alert-row" key={a.producto_id}>
                 <div>
-                  <div className="t1">{a.producto_nombre}</div>
+                  <div className="t1">{a.producto_nombre} <span className="dim" style={{fontWeight:400}}>· {grupo.nombre}</span></div>
                   <div className="t2">
                     {a.stock_actual} {a.unidad_medida} disponibles · mínimo {a.stock_minimo} {a.unidad_medida}
                   </div>
+                  {a.alerta_desde && (() => { const fh = formatFechaHora(a.alerta_desde); return (
+                    <div className="t2" style={{ marginTop: 4 }}>
+                      Bajo mínimo desde: <span className="dia" style={{ display: 'inline' }}>{fh.dia}</span> {fh.fecha} · {fh.hora}
+                    </div>
+                  ); })()}
                 </div>
                 <span className="badge low">RESURTIR</span>
               </div>

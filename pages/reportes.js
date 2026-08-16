@@ -121,7 +121,14 @@ export default function Reportes() {
                 <tbody>
                   {data.detalle.map((d, idx) => (
                     <tr key={idx}>
-                      <td className="mono dim">{formatFechaHora(d.fecha)}</td>
+                      <td className="fecha-cell">
+                        {(() => { const fh = formatFechaHora(d.fecha); return (
+                          <>
+                            <span className="dia">{fh.dia}</span>
+                            <span className="fh">{fh.fecha} · {fh.hora}</span>
+                          </>
+                        ); })()}
+                      </td>
                       <td>{d.sede_nombre}</td>
                       <td>{d.producto_nombre}</td>
                       <td className="num mono">{d.cantidad} {d.unidad_medida || ''}</td>

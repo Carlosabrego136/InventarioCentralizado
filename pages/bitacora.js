@@ -12,6 +12,8 @@ const TIPO_LABEL = {
   producto_creado: 'Producto creado',
   producto_editado: 'Producto editado',
   producto_baja: 'Producto dado de baja',
+  producto_asignado: 'Producto agregado a tienda',
+  producto_quitado_tienda: 'Producto quitado de tienda',
   stock_corregido: 'Stock corregido',
   minimo_editado: 'Mínimo editado',
   traspaso: 'Traspaso',
@@ -27,19 +29,28 @@ export default function Bitacora() {
 
   useEffect(() => {
     cargar();
-    // Actualiza sola cada 15s — así se ve "en tiempo real" sin recargar la página.
     const t = setInterval(cargar, 15000);
     return () => clearInterval(t);
   }, []);
+
+  async function limpiar() {
+    if (!confirm(`Esto borra TODO el historial de actividad (${eventos?.length || 0} eventos visibles) de forma permanente. ¿Seguro?`)) return;
+    const res = await fetch('/api/bitacora', { method: 'DELETE' });
+    if (!res.ok) { alert('No se pudo limpiar'); return; }
+    cargar();
+  }
 
   return (
     <div>
       <header className="topbar">
         <h1 className="page-title">Actividad</h1>
-        <p className="page-sub">Todo lo que cambió, quién lo hizo y desde dónde — se actualiza sola</p>
+        <p className="page-sub">Todo lo que cambió, quién lo hizo y desde qué tienda — se actualiza sola</p>
       </header>
 
       <section className="panel">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+          <button className="btn secondary small" onClick={limpiar}>Limpiar historial</button>
+        </div>
         {!eventos ? (
           <p className="empty-state">Cargando…</p>
         ) : eventos.length === 0 ? (
@@ -50,14 +61,20 @@ export default function Bitacora() {
               <tr><th>Fecha y hora</th><th>Origen</th><th>Tipo</th><th>Qué pasó</th></tr>
             </thead>
             <tbody>
-              {eventos.map((e) => (
-                <tr key={e.id}>
-                  <td className="mono dim">{formatFechaHora(e.fecha)}</td>
-                  <td>{e.origen}{e.sede_nombre ? ` · ${e.sede_nombre}` : ''}</td>
-                  <td><span className="badge ok">{TIPO_LABEL[e.tipo] || e.tipo}</span></td>
-                  <td>{e.descripcion}</td>
-                </tr>
-              ))}
+              {eventos.map((e) => {
+                const fh = formatFechaHora(e.fecha);
+                return (
+                  <tr key={e.id}>
+                    <td className="fecha-cell">
+                      <span className="dia">{fh.dia}</span>
+                      <span className="fh">{fh.fecha} · {fh.hora}</span>
+                    </td>
+                    <td>{e.origen}{e.sede_nombre ? ` · ${e.sede_nombre}` : ''}</td>
+                    <td><span className="badge ok">{TIPO_LABEL[e.tipo] || e.tipo}</span></td>
+                    <td>{e.descripcion}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

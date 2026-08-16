@@ -10,23 +10,56 @@ export async function getServerSideProps({ req }) {
 const UNIDADES = ['kg', 'gr', 'lt', 'pza'];
 
 export default function Productos() {
+  const [sedes, setSedes] = useState([]);
   const [productos, setProductos] = useState([]);
+  const [membresias, setMembresias] = useState([]); // [{sede_id, producto_id, activo}]
   const [loading, setLoading] = useState(true);
-  const [nuevo, setNuevo] = useState({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', disponibleReducido: true });
+  const [nuevo, setNuevo] = useState({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', sedes: [] });
   const [msg, setMsg] = useState(null);
 
   function cargar() {
-    fetch('/api/productos?includeInactive=1').then((r) => r.json()).then((data) => {
-      setProductos(data);
+    Promise.all([
+      fetch('/api/sedes').then((r) => r.json()),
+      fetch('/api/productos?includeInactive=1').then((r) => r.json()),
+      fetch('/api/membresias').then((r) => r.json()),
+    ]).then(([s, p, m]) => {
+      setSedes(s);
+      setProductos(p);
+      setMembresias(m);
       setLoading(false);
     });
   }
 
   useEffect(() => { cargar(); }, []);
 
+  function tieneEnSede(productoId, sedeId) {
+    const m = membresias.find((x) => x.producto_id === productoId && x.sede_id === sedeId);
+    return !!m && m.activo;
+  }
+
+  async function toggleSede(productoId, sedeId, estabaActivo) {
+    await fetch(`/api/inventario?sedeId=${sedeId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productoId, disponible: !estabaActivo }),
+    });
+    cargar();
+  }
+
+  function toggleNuevaSede(sedeId) {
+    setNuevo((n) => ({
+      ...n,
+      sedes: n.sedes.includes(sedeId) ? n.sedes.filter((s) => s !== sedeId) : [...n.sedes, sedeId],
+    }));
+  }
+
   async function crear(e) {
     e.preventDefault();
     setMsg(null);
+    if (nuevo.sedes.length === 0) {
+      setMsg({ text: 'Elige en qué tienda(s) va a aparecer.', err: true });
+      return;
+    }
     const res = await fetch('/api/productos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -35,13 +68,13 @@ export default function Productos() {
         nombre: nuevo.nombre,
         unidadMedida: nuevo.unidadMedida,
         precioVenta: parseFloat(nuevo.precioVenta),
-        disponibleReducido: nuevo.disponibleReducido,
+        sedes: nuevo.sedes,
       }),
     });
     const data = await res.json();
     if (!res.ok) { setMsg({ text: data.error || 'No se pudo crear', err: true }); return; }
     setMsg({ text: `"${data.nombre}" creado.`, err: false });
-    setNuevo({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', disponibleReducido: true });
+    setNuevo({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', sedes: [] });
     cargar();
   }
 
@@ -54,21 +87,17 @@ export default function Productos() {
     cargar();
   }
 
-  async function eliminar(id, nombre) {
-    if (!confirm(`¿Dar de baja "${nombre}"? Ya no aparecerá en ninguna tienda, pero su historial de ventas se conserva.`)) return;
+  async function eliminarGlobal(id, nombre) {
+    if (!confirm(`¿Dar de baja "${nombre}" en TODAS las tiendas? Para quitarlo solo de una tienda, usa los botones de tienda en vez de este.`)) return;
     await fetch(`/api/productos?id=${id}`, { method: 'DELETE' });
     cargar();
-  }
-
-  async function reactivar(id) {
-    await actualizar(id, 'activo', true);
   }
 
   return (
     <div>
       <header className="topbar">
         <h1 className="page-title">Productos</h1>
-        <p className="page-sub">Crea, edita precios/unidades o da de baja productos — se aplica en las 3 tiendas al instante</p>
+        <p className="page-sub">Cada tienda tiene su propio catálogo — elige dónde aparece cada producto</p>
       </header>
 
       <section className="panel">
@@ -93,13 +122,16 @@ export default function Productos() {
             <input required type="number" min="0" step="0.01" value={nuevo.precioVenta}
               onChange={(e) => setNuevo({ ...nuevo, precioVenta: e.target.value })} placeholder="0.00" />
           </div>
-          <div>
-            <label>Tienda 3 (reducido)</label>
-            <select value={nuevo.disponibleReducido ? '1' : '0'}
-              onChange={(e) => setNuevo({ ...nuevo, disponibleReducido: e.target.value === '1' })}>
-              <option value="1">Sí aparece</option>
-              <option value="0">No aparece</option>
-            </select>
+          <div style={{ minWidth: 260 }}>
+            <label>¿En qué tienda(s) aparece?</label>
+            <div className="sede-pill-row" style={{ paddingTop: 4 }}>
+              {sedes.map((s) => (
+                <span key={s.id} className={`sede-pill ${nuevo.sedes.includes(s.id) ? 'on' : ''}`}
+                  onClick={() => toggleNuevaSede(s.id)}>
+                  {s.nombre.split('·')[0].trim()}
+                </span>
+              ))}
+            </div>
           </div>
           <button className="btn" type="submit">Crear producto</button>
         </form>
@@ -113,7 +145,7 @@ export default function Productos() {
             <thead>
               <tr>
                 <th>SKU</th><th>Nombre</th><th>Unidad</th><th className="num">Precio</th>
-                <th>Tienda 3</th><th>Estado</th><th></th>
+                <th>En qué tiendas</th><th>Estado</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -133,18 +165,24 @@ export default function Productos() {
                       onBlur={(e) => actualizar(p.id, 'precioVenta', parseFloat(e.target.value))} />
                   </td>
                   <td>
-                    <select defaultValue={p.disponible_reducido ? '1' : '0'}
-                      onChange={(e) => actualizar(p.id, 'disponibleReducido', e.target.value === '1')}>
-                      <option value="1">Sí</option>
-                      <option value="0">No</option>
-                    </select>
+                    <div className="sede-pill-row">
+                      {sedes.map((s) => {
+                        const activo = tieneEnSede(p.id, s.id);
+                        return (
+                          <span key={s.id} className={`sede-pill ${activo ? 'on' : ''}`}
+                            onClick={() => toggleSede(p.id, s.id, activo)}>
+                            {s.nombre.split('·')[0].trim()}
+                          </span>
+                        );
+                      })}
+                    </div>
                   </td>
                   <td><span className={`badge ${p.activo ? 'ok' : 'low'}`}>{p.activo ? 'ACTIVO' : 'DE BAJA'}</span></td>
                   <td>
                     {p.activo ? (
-                      <button className="btn small secondary" onClick={() => eliminar(p.id, p.nombre)}>Dar de baja</button>
+                      <button className="btn small secondary" onClick={() => eliminarGlobal(p.id, p.nombre)}>Baja total</button>
                     ) : (
-                      <button className="btn small" onClick={() => reactivar(p.id)}>Reactivar</button>
+                      <button className="btn small" onClick={() => actualizar(p.id, 'activo', true)}>Reactivar</button>
                     )}
                   </td>
                 </tr>

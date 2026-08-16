@@ -65,11 +65,23 @@ export default function Inventario() {
       .then(setData);
   }
 
+  async function quitarDeTienda(productoId, nombre) {
+    if (!confirm(`¿Quitar "${nombre}" de esta tienda? Sigue existiendo en las demás y en el catálogo general.`)) return;
+    await fetch(`/api/inventario?sedeId=${sedeId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productoId, disponible: false }),
+    });
+    fetch(`/api/inventario?sedeId=${sedeId}`)
+      .then((r) => r.json())
+      .then(setData);
+  }
+
   return (
     <div>
       <header className="topbar">
         <h1 className="page-title">Inventario por sede</h1>
-        <p className="page-sub">Consulta y ajusta el stock mínimo por producto</p>
+        <p className="page-sub">El catálogo de cada tienda es independiente — esto es lo que YA tiene esta tienda</p>
       </header>
 
       <section className="panel">
@@ -86,12 +98,12 @@ export default function Inventario() {
           </div>
         </div>
 
-        {data?.sede?.catalogo_reducido && (
-          <p className="catalogo-note">◆ Catálogo reducido — solo se muestran los productos habilitados para esta tienda</p>
-        )}
+        <p className="catalogo-note">◆ Para agregar productos nuevos a esta tienda, ve a la página Productos</p>
 
         {loading || !data ? (
           <p className="empty-state">Cargando…</p>
+        ) : data.inventario.length === 0 ? (
+          <p className="empty-state">Esta tienda todavía no tiene productos asignados. Ve a Productos para agregarle.</p>
         ) : (
           <table>
             <thead>
@@ -129,9 +141,12 @@ export default function Inventario() {
                     <td>
                       <span className={`badge ${bajo ? 'low' : 'ok'}`}>{bajo ? 'BAJO MÍNIMO' : 'OK'}</span>
                     </td>
-                    <td>
+                    <td style={{ display: 'flex', gap: 6 }}>
                       <button className="btn small secondary" onClick={() => corregirStock(p.producto_id, p.stock_actual)}>
                         Corregir
+                      </button>
+                      <button className="btn small secondary" onClick={() => quitarDeTienda(p.producto_id, p.nombre)}>
+                        Quitar
                       </button>
                     </td>
                   </tr>

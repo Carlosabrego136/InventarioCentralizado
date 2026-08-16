@@ -78,3 +78,11 @@ CREATE TABLE IF NOT EXISTS bitacora (
     descripcion TEXT NOT NULL,
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ============================================================
+-- Migración: catálogo por tienda (cada sede tiene sus propios
+-- productos, no uno compartido) + fecha/hora de cuándo empezó
+-- cada alerta de stock mínimo.
+-- ============================================================
+ALTER TABLE inventario_sedes ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE inventario_sedes ADD COLUMN IF NOT EXISTS alerta_desde TIMESTAMP;

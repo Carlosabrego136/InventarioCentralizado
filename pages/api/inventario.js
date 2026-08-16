@@ -12,17 +12,17 @@ export default async function handler(req, res) {
     try {
       const sedeRes = await query('SELECT * FROM sedes WHERE id=$1', [sedeId]);
       if (sedeRes.rows.length === 0) return res.status(404).json({ error: 'Sede no encontrada' });
-      const reducido = sedeRes.rows[0].catalogo_reducido;
 
+      // Solo productos que de verdad pertenecen a esta tienda — cada
+      // tienda tiene su propio catálogo, ya no uno compartido.
       const { rows } = await query(
         `SELECT p.id AS producto_id, p.sku_codigo, p.nombre, p.unidad_medida, p.precio_venta,
-                COALESCE(i.stock_actual, 0) AS stock_actual,
-                COALESCE(i.stock_minimo, 0) AS stock_minimo
-         FROM productos p
-         LEFT JOIN inventario_sedes i ON i.producto_id = p.id AND i.sede_id = $1
-         WHERE p.activo = true AND ($2::boolean = false OR p.disponible_reducido = true)
+                i.stock_actual, i.stock_minimo, i.alerta_desde
+         FROM inventario_sedes i
+         JOIN productos p ON p.id = i.producto_id
+         WHERE i.sede_id = $1 AND i.activo = true AND p.activo = true
          ORDER BY p.id`,
-        [sedeId, reducido]
+        [sedeId]
       );
       return res.status(200).json({ sede: sedeRes.rows[0], inventario: rows });
     } catch (err) {
@@ -33,18 +33,39 @@ export default async function handler(req, res) {
 
   if (req.method === 'PATCH') {
     try {
-      const { productoId, stockMinimo, stockActual } = req.body;
+      const { productoId, stockMinimo, stockActual, disponible } = req.body;
       if (productoId === undefined) return res.status(400).json({ error: 'Faltan datos' });
-      if (stockMinimo === undefined && stockActual === undefined) {
+      if (stockMinimo === undefined && stockActual === undefined && disponible === undefined) {
         return res.status(400).json({ error: 'Nada que actualizar' });
       }
+
+      // Si se está corrigiendo stock, primero vemos si cruza el mínimo
+      // (para abrir/cerrar la alerta con fecha real).
+      let alertaDesdeSql = 'inventario_sedes.alerta_desde';
+      const params = [sedeId, productoId, stockMinimo === undefined ? null : stockMinimo, stockActual === undefined ? null : stockActual, disponible === undefined ? null : disponible];
+
+      if (stockActual !== undefined) {
+        const actual = await query(
+          'SELECT stock_actual, stock_minimo FROM inventario_sedes WHERE sede_id=$1 AND producto_id=$2',
+          [sedeId, productoId]
+        );
+        const prevStock = Number(actual.rows[0]?.stock_actual ?? 0);
+        const minimo = stockMinimo !== undefined ? stockMinimo : Number(actual.rows[0]?.stock_minimo ?? 0);
+        const bajoAntes = minimo > 0 && prevStock <= minimo;
+        const bajoAhora = minimo > 0 && stockActual <= minimo;
+        if (bajoAhora && !bajoAntes) alertaDesdeSql = 'NOW()';
+        else if (!bajoAhora) alertaDesdeSql = 'NULL';
+      }
+
       await query(
-        `INSERT INTO inventario_sedes (sede_id, producto_id, stock_actual, stock_minimo)
-         VALUES ($1, $2, COALESCE($4, 0), COALESCE($3, 0))
+        `INSERT INTO inventario_sedes (sede_id, producto_id, stock_actual, stock_minimo, activo)
+         VALUES ($1, $2, COALESCE($4, 0), COALESCE($3, 0), COALESCE($5, true))
          ON CONFLICT (sede_id, producto_id) DO UPDATE SET
            stock_minimo = COALESCE($3, inventario_sedes.stock_minimo),
-           stock_actual = COALESCE($4, inventario_sedes.stock_actual)`,
-        [sedeId, productoId, stockMinimo === undefined ? null : stockMinimo, stockActual === undefined ? null : stockActual]
+           stock_actual = COALESCE($4, inventario_sedes.stock_actual),
+           activo = COALESCE($5, inventario_sedes.activo),
+           alerta_desde = ${alertaDesdeSql}`,
+        params
       );
 
       const [prodRes, sedeRes] = await Promise.all([
@@ -53,7 +74,15 @@ export default async function handler(req, res) {
       ]);
       const nombreProd = prodRes.rows[0]?.nombre || 'producto';
       const nombreSede = sedeRes.rows[0]?.nombre || 'sede';
-      if (stockActual !== undefined) {
+
+      if (disponible !== undefined) {
+        await logEvento({
+          sedeId,
+          origen: 'Cristian (admin)',
+          tipo: disponible ? 'producto_asignado' : 'producto_quitado_tienda',
+          descripcion: `${disponible ? 'Agregó' : 'Quitó'} "${nombreProd}" ${disponible ? 'a' : 'de'} ${nombreSede}`,
+        });
+      } else if (stockActual !== undefined) {
         await logEvento({
           sedeId,
           origen: 'Cristian (admin)',

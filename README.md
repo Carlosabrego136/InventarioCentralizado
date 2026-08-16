@@ -97,11 +97,12 @@ palafox-inventario/
 
 ## Ya incluido en esta versión
 
-- **Login** con `ADMIN_PASSWORD` — nadie ve nada sin la contraseña de Cristian.
-- **Productos**: alta, edición de precio/unidad/catálogo reducido, y baja lógica (nunca se borra el historial de ventas asociado).
-- **Inventario**: además del stock mínimo, ahora se puede **corregir el stock real** de cualquier producto en cualquier sede (para conteos físicos).
-- **Reportes**: historial de ventas filtrable por tienda y rango de fechas, con totales, fecha y hora en formato 12h (AM/PM). Incluye botón para **limpiar el historial** del filtro actual (queda registrado en Actividad).
-- **Actividad**: bitácora en tiempo real (se actualiza sola cada 15s) de todo lo que cambia — productos creados/editados/dados de baja, correcciones de stock, traspasos — con el origen exacto (Cristian o qué tienda).
-- **Ojito de contraseña** en el login, para ver lo que estás escribiendo.
+- **Catálogo por tienda de verdad**: cada tienda (y bodega) tiene su propio catálogo — un producto creado en una tienda NO aparece en las demás a menos que se le agregue explícitamente. Al crear un producto desde este sistema, eliges en qué tienda(s) aparece (botones "Bodega / Tienda 1 / Tienda 2 / Tienda 3").
+- **Página Productos**: cada fila tiene botones para agregar/quitar el producto de cada tienda individualmente — quitar de una tienda NO lo quita de las demás.
+- **Inventario por sede**: además de corregir stock/mínimo, ahora puedes "Quitar" un producto de esa tienda en particular.
+- **Alertas con fecha y hora real**: cada alerta de stock mínimo muestra desde cuándo empezó (día de la semana, fecha y hora en 12h AM/PM) — no solo "está bajo", sino desde cuándo.
+- **Actividad**: además de verse en tiempo real, ahora tiene botón para limpiar todo el historial.
+- **Traspasos**: si mandas un producto a una tienda que no lo tenía en su catálogo, se le da de alta automáticamente ahí.
+- **Fechas más detalladas**: en Reportes y Actividad, cada fecha muestra el día de la semana chico arriba (LUNES, MARTES, etc.) y la fecha/hora completa abajo.
 
-⚠️ Si ya tenías la base de datos inicializada de antes, corre `npm run db:init` de nuevo — es seguro repetirlo (usa `IF NOT EXISTS` en todo) y así se agregan las tablas/columnas nuevas.
+⚠️ Si ya tenías la base de datos inicializada de antes, corre `npm run db:init` de nuevo — es seguro repetirlo y agrega las columnas nuevas (`activo`, `alerta_desde` en `inventario_sedes`).
