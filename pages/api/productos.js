@@ -1,4 +1,4 @@
-import { query } from '../../lib/db';
+import { query, logEvento } from '../../lib/db';
 import { requireSession } from '../../lib/auth';
 
 export default async function handler(req, res) {
@@ -40,6 +40,11 @@ export default async function handler(req, res) {
          VALUES ($1,$2,$3,$4,$5) RETURNING *`,
         [skuCodigo || null, nombre, unidadMedida, precioVenta, disponibleReducido !== false]
       );
+      await logEvento({
+        origen: 'Cristian (admin)',
+        tipo: 'producto_creado',
+        descripcion: `Creó el producto "${nombre}" — $${precioVenta}/${unidadMedida}`,
+      });
       return res.status(201).json(rows[0]);
     } catch (err) {
       console.error(err);
@@ -72,6 +77,15 @@ export default async function handler(req, res) {
         ]
       );
       if (rows.length === 0) return res.status(404).json({ error: 'Producto no encontrado' });
+      const cambios = [];
+      if (precioVenta !== undefined && precioVenta !== null) cambios.push(`precio → $${precioVenta}`);
+      if (unidadMedida) cambios.push(`unidad → ${unidadMedida}`);
+      if (nombre) cambios.push(`nombre → "${nombre}"`);
+      await logEvento({
+        origen: 'Cristian (admin)',
+        tipo: 'producto_editado',
+        descripcion: `Editó "${rows[0].nombre}"${cambios.length ? ': ' + cambios.join(', ') : ''}`,
+      });
       return res.status(200).json(rows[0]);
     } catch (err) {
       console.error(err);
@@ -85,7 +99,13 @@ export default async function handler(req, res) {
       if (!id) return res.status(400).json({ error: 'Falta el id del producto' });
       // Baja lógica: nunca borramos el producto de verdad, para no perder
       // el historial de ventas/traspasos que ya lo referencian.
+      const prodRes = await query('SELECT nombre FROM productos WHERE id=$1', [id]);
       await query('UPDATE productos SET activo = false WHERE id = $1', [id]);
+      await logEvento({
+        origen: 'Cristian (admin)',
+        tipo: 'producto_baja',
+        descripcion: `Dio de baja "${prodRes.rows[0]?.nombre || 'producto'}"`,
+      });
       return res.status(200).json({ ok: true });
     } catch (err) {
       console.error(err);

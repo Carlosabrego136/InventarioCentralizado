@@ -64,3 +64,17 @@ ALTER TABLE productos ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT T
 ALTER TABLE detalle_ventas ADD COLUMN IF NOT EXISTS nombre_libre VARCHAR(150);
 ALTER TABLE detalle_ventas ADD COLUMN IF NOT EXISTS unidad_libre VARCHAR(20);
 ALTER TABLE detalle_ventas ADD COLUMN IF NOT EXISTS precio_unitario DECIMAL(10,2);
+
+-- ============================================================
+-- Migración: bitácora de actividad (para que Cristian vea en tiempo
+-- real qué cambió, quién lo hizo y desde dónde)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS bitacora (
+    id SERIAL PRIMARY KEY,
+    sede_id INT REFERENCES sedes(id),
+    origen VARCHAR(30) NOT NULL,   -- 'Cristian (admin)', 'Tienda 1', etc.
+    tipo VARCHAR(40) NOT NULL,     -- producto_creado, producto_editado, producto_baja,
+                                    -- stock_corregido, minimo_editado, traspaso, historial_limpiado
+    descripcion TEXT NOT NULL,
+    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

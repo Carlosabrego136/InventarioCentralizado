@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getSession } from '../lib/auth';
+import { formatFechaHora } from '../lib/format';
 
 export async function getServerSideProps({ req }) {
   const session = getSession(req);
@@ -44,6 +45,23 @@ export default function Reportes() {
 
   const totalGeneral = (data?.totales || []).reduce((s, t) => s + Number(t.total), 0);
 
+  async function limpiarHistorial() {
+    if (!sedeId && !desde && !hasta) {
+      alert('Elige al menos una tienda o un rango de fechas antes de limpiar.');
+      return;
+    }
+    const cuantas = data?.totales?.reduce((s, t) => s + Number(t.num_ventas), 0) || 0;
+    if (!confirm(`Esto va a borrar ${cuantas} venta(s) de forma permanente (las que ves ahorita con este filtro). No se puede deshacer. ¿Seguro?`)) return;
+    const params = new URLSearchParams();
+    if (sedeId) params.set('sedeId', sedeId);
+    if (desde) params.set('desde', desde);
+    if (hasta) params.set('hasta', hasta);
+    const res = await fetch(`/api/reportes?${params.toString()}`, { method: 'DELETE' });
+    const data2 = await res.json();
+    if (!res.ok) { alert(data2.error || 'No se pudo limpiar'); return; }
+    buscar();
+  }
+
   return (
     <div>
       <header className="topbar">
@@ -73,7 +91,6 @@ export default function Reportes() {
           <button className="btn" onClick={buscar}>Buscar</button>
         </div>
       </section>
-
       {loading ? <p className="empty-state">Cargando…</p> : (
         <>
           <div className="grid-4">
@@ -87,7 +104,10 @@ export default function Reportes() {
           </div>
 
           <section className="panel">
-            <h2 className="panel-title">Total del periodo: ${totalGeneral.toFixed(2)}</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+              <h2 className="panel-title" style={{ margin: 0 }}>Total del periodo: ${totalGeneral.toFixed(2)}</h2>
+              <button className="btn secondary small" onClick={limpiarHistorial}>Limpiar historial (este filtro)</button>
+            </div>
             {(data?.detalle || []).length === 0 ? (
               <p className="empty-state">No hay ventas en ese rango.</p>
             ) : (
@@ -101,7 +121,7 @@ export default function Reportes() {
                 <tbody>
                   {data.detalle.map((d, idx) => (
                     <tr key={idx}>
-                      <td className="mono dim">{new Date(d.fecha).toLocaleString('es-MX')}</td>
+                      <td className="mono dim">{formatFechaHora(d.fecha)}</td>
                       <td>{d.sede_nombre}</td>
                       <td>{d.producto_nombre}</td>
                       <td className="num mono">{d.cantidad} {d.unidad_medida || ''}</td>

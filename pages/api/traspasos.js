@@ -1,6 +1,10 @@
-import { query, withTransaction } from '../../lib/db';
+import { query, withTransaction, logEvento } from '../../lib/db';
+import { requireSession } from '../../lib/auth';
 
 export default async function handler(req, res) {
+  const session = requireSession(req, res);
+  if (!session) return;
+
   if (req.method === 'GET') {
     try {
       const { rows } = await query(
@@ -66,10 +70,27 @@ export default async function handler(req, res) {
            VALUES ($1, $2, $3, $4) RETURNING *`,
           [origenId, destinoId, productoId, cantidad]
         );
-        return trasRes.rows[0];
+
+        const [prodRes, origenRes2, destRes2] = await Promise.all([
+          client.query('SELECT nombre, unidad_medida FROM productos WHERE id=$1', [productoId]),
+          client.query('SELECT nombre FROM sedes WHERE id=$1', [origenId]),
+          client.query('SELECT nombre FROM sedes WHERE id=$1', [destinoId]),
+        ]);
+
+        return {
+          traspaso: trasRes.rows[0],
+          descripcion: `Traspaso de ${cantidad} ${prodRes.rows[0]?.unidad_medida || ''} de "${prodRes.rows[0]?.nombre}" — ${origenRes2.rows[0]?.nombre} → ${destRes2.rows[0]?.nombre}`,
+        };
       });
 
-      return res.status(201).json(result);
+      await logEvento({
+        sedeId: destinoId,
+        origen: 'Cristian (admin)',
+        tipo: 'traspaso',
+        descripcion: result.descripcion,
+      });
+
+      return res.status(201).json(result.traspaso);
     } catch (err) {
       console.error(err);
       return res.status(400).json({ error: err.message || 'Error al realizar el traspaso' });

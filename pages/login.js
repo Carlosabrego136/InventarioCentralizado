@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 export default function Login() {
   const router = useRouter();
   const [password, setPassword] = useState('');
+  const [mostrar, setMostrar] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -30,13 +31,18 @@ export default function Login() {
       <form className="login-card" onSubmit={enviar}>
         <div className="brand" style={{ marginBottom: 6 }}>PALA<span>FOX</span></div>
         <p className="page-sub" style={{ marginBottom: 24 }}>Ingresa tu contraseña de acceso</p>
-        <input
-          type="password"
-          placeholder="Contraseña"
-          autoFocus
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div className="pw-field">
+          <input
+            type={mostrar ? 'text' : 'password'}
+            placeholder="Contraseña"
+            autoFocus
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button type="button" className="pw-eye" onClick={() => setMostrar(!mostrar)} tabIndex={-1}>
+            {mostrar ? '🙈' : '👁'}
+          </button>
+        </div>
         {error && <p className="inline-msg err">{error}</p>}
         <button className="btn full" type="submit" disabled={loading} style={{ marginTop: 16 }}>
           {loading ? 'Entrando…' : 'Entrar'}

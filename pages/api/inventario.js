@@ -1,6 +1,10 @@
-import { query } from '../../lib/db';
+import { query, logEvento } from '../../lib/db';
+import { requireSession } from '../../lib/auth';
 
 export default async function handler(req, res) {
+  const session = requireSession(req, res);
+  if (!session) return;
+
   const { sedeId } = req.query;
   if (!sedeId) return res.status(400).json({ error: 'Falta sedeId' });
 
@@ -16,7 +20,7 @@ export default async function handler(req, res) {
                 COALESCE(i.stock_minimo, 0) AS stock_minimo
          FROM productos p
          LEFT JOIN inventario_sedes i ON i.producto_id = p.id AND i.sede_id = $1
-         WHERE ($2::boolean = false OR p.disponible_reducido = true)
+         WHERE p.activo = true AND ($2::boolean = false OR p.disponible_reducido = true)
          ORDER BY p.id`,
         [sedeId, reducido]
       );
@@ -42,6 +46,29 @@ export default async function handler(req, res) {
            stock_actual = COALESCE($4, inventario_sedes.stock_actual)`,
         [sedeId, productoId, stockMinimo === undefined ? null : stockMinimo, stockActual === undefined ? null : stockActual]
       );
+
+      const [prodRes, sedeRes] = await Promise.all([
+        query('SELECT nombre FROM productos WHERE id=$1', [productoId]),
+        query('SELECT nombre FROM sedes WHERE id=$1', [sedeId]),
+      ]);
+      const nombreProd = prodRes.rows[0]?.nombre || 'producto';
+      const nombreSede = sedeRes.rows[0]?.nombre || 'sede';
+      if (stockActual !== undefined) {
+        await logEvento({
+          sedeId,
+          origen: 'Cristian (admin)',
+          tipo: 'stock_corregido',
+          descripcion: `Corrigió el stock de "${nombreProd}" en ${nombreSede} → ${stockActual}`,
+        });
+      } else {
+        await logEvento({
+          sedeId,
+          origen: 'Cristian (admin)',
+          tipo: 'minimo_editado',
+          descripcion: `Cambió el mínimo de "${nombreProd}" en ${nombreSede} → ${stockMinimo}`,
+        });
+      }
+
       return res.status(200).json({ ok: true });
     } catch (err) {
       console.error(err);
