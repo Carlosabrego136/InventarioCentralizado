@@ -14,7 +14,7 @@ export default function Productos() {
   const [productos, setProductos] = useState([]);
   const [membresias, setMembresias] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [nuevo, setNuevo] = useState({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', sedes: [] });
+  const [nuevo, setNuevo] = useState({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', sedes: [], stockPorSede: {} });
   const [msg, setMsg] = useState(null);
   const [pendientes, setPendientes] = useState({}); // { [id]: {nombre, unidadMedida, precioVenta} }
   const [guardando, setGuardando] = useState(false);
@@ -48,10 +48,22 @@ export default function Productos() {
     cargar();
   }
 
-  function toggleNuevaSede(sedeId) {
+  function toggleNuevaSede(sede) {
+    setNuevo((n) => {
+      let sedesSel = n.sedes.includes(sede.id) ? n.sedes.filter((s) => s !== sede.id) : [...n.sedes, sede.id];
+      // La Bodega Central surte a las tiendas — si eliges cualquier tienda,
+      // la bodega entra automático (aunque con su propia cantidad aparte).
+      const bodega = sedes.find((s) => s.tipo === 'bodega');
+      const hayTiendaElegida = sedesSel.some((id) => sedes.find((s) => s.id === id)?.tipo === 'tienda');
+      if (bodega && hayTiendaElegida && !sedesSel.includes(bodega.id)) sedesSel = [...sedesSel, bodega.id];
+      return { ...n, sedes: sedesSel };
+    });
+  }
+
+  function editarStockNuevo(sedeId, campo, valor) {
     setNuevo((n) => ({
       ...n,
-      sedes: n.sedes.includes(sedeId) ? n.sedes.filter((s) => s !== sedeId) : [...n.sedes, sedeId],
+      stockPorSede: { ...n.stockPorSede, [sedeId]: { ...n.stockPorSede[sedeId], [campo]: valor } },
     }));
   }
 
@@ -71,12 +83,13 @@ export default function Productos() {
         unidadMedida: nuevo.unidadMedida,
         precioVenta: parseFloat(nuevo.precioVenta),
         sedes: nuevo.sedes,
+        stockPorSede: nuevo.stockPorSede,
       }),
     });
     const data = await res.json();
     if (!res.ok) { setMsg({ text: data.error || 'No se pudo crear', err: true }); return; }
-    setMsg({ text: `"${data.nombre}" creado. Ahora entra a Inventario en cada tienda para ponerle el stock inicial.`, err: false });
-    setNuevo({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', sedes: [] });
+    setMsg({ text: `"${data.nombre}" creado y disponible para vender de una vez.`, err: false });
+    setNuevo({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', sedes: [], stockPorSede: {} });
     cargar();
   }
 
@@ -114,8 +127,16 @@ export default function Productos() {
   }
 
   async function eliminarGlobal(id, nombre) {
-    if (!confirm(`¿Dar de baja "${nombre}" en TODAS las tiendas? Para quitarlo solo de una tienda, usa los botones de tienda en vez de este.`)) return;
+    if (!confirm(`¿Dar de baja "${nombre}" en TODAS las tiendas? Para quitarlo solo de una tienda, usa los botones de tienda en vez de este. (Esto conserva su historial de ventas — para borrarlo del todo usa "Borrar" a un lado.)`)) return;
     await fetch(`/api/productos?id=${id}`, { method: 'DELETE' });
+    cargar();
+  }
+
+  async function borrarDefinitivo(id, nombre) {
+    if (!confirm(`¿Borrar "${nombre}" PARA SIEMPRE? Esto no se puede deshacer. Si ya tiene ventas o traspasos registrados, no va a dejar — en ese caso usa "Baja total" en su lugar.`)) return;
+    const res = await fetch(`/api/productos?id=${id}&permanente=1`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || 'No se pudo borrar'); return; }
     cargar();
   }
 
@@ -131,9 +152,11 @@ export default function Productos() {
         <div className="help-box">
           <strong>SKU</strong>: código interno opcional, solo para identificarlo (puedes dejarlo vacío).<br/>
           <strong>Precio</strong>: el precio de venta base — se puede ajustar puntualmente al cobrar sin cambiar este valor general.<br/>
-          Después de crearlo, entra a <strong>Inventario</strong> en cada tienda elegida para ponerle el stock inicial (nace en 0).
+          <strong>Stock / Mínimo por tienda</strong>: cada tienda (y la Bodega Central) tiene su propia cantidad, totalmente aparte — la Bodega NO es una copia de lo que tienen las tiendas, es el almacén desde el que se les surte. Ponle a cada una la cantidad que de verdad tiene ahora mismo.<br/>
+          Si eliges cualquier tienda, la Bodega se agrega sola (para que Cristian pueda mandarle stock después vía Traspasos) — tú decides cuánto tiene la Bodega de ese producto.
         </div>
-        <form className="form-row" onSubmit={crear}>
+        <form onSubmit={crear}>
+        <div className="form-row">
           <div>
             <label>SKU (opcional)</label>
             <input value={nuevo.skuCodigo} onChange={(e) => setNuevo({ ...nuevo, skuCodigo: e.target.value })} placeholder="CHI-004" />
@@ -153,18 +176,48 @@ export default function Productos() {
             <input required type="number" min="0" step="0.01" value={nuevo.precioVenta}
               onChange={(e) => setNuevo({ ...nuevo, precioVenta: e.target.value })} placeholder="0.00" />
           </div>
-          <div style={{ minWidth: 260 }}>
-            <label>¿En qué tienda(s) aparece?</label>
-            <div className="sede-pill-row" style={{ paddingTop: 4 }}>
-              {sedes.map((s) => (
-                <span key={s.id} className={`sede-pill ${nuevo.sedes.includes(s.id) ? 'on' : ''}`}
-                  onClick={() => toggleNuevaSede(s.id)}>
-                  {s.nombre.split('·')[0].trim()}
-                </span>
-              ))}
-            </div>
+        </div>
+
+        <div style={{ marginTop: 18 }}>
+          <label>¿En qué sede(s) aparece, y con cuánto stock?</label>
+          <div className="sede-pill-row" style={{ paddingTop: 4, marginBottom: 12 }}>
+            {sedes.map((s) => (
+              <span key={s.id} className={`sede-pill ${nuevo.sedes.includes(s.id) ? 'on' : ''}`}
+                onClick={() => toggleNuevaSede(s)}>
+                {s.nombre.split('·')[0].trim()}
+              </span>
+            ))}
           </div>
+          {nuevo.sedes.length > 0 && (
+            <table style={{ marginBottom: 16 }}>
+              <thead>
+                <tr><th>Sede</th><th className="num">Stock inicial</th><th className="num">Mínimo</th></tr>
+              </thead>
+              <tbody>
+                {nuevo.sedes.map((sedeId) => {
+                  const s = sedes.find((x) => x.id === sedeId);
+                  const cfg = nuevo.stockPorSede[sedeId] || {};
+                  return (
+                    <tr key={sedeId}>
+                      <td>{s?.nombre}{s?.tipo === 'bodega' ? ' (aparte de las tiendas)' : ''}</td>
+                      <td className="num">
+                        <input className="min-input" type="number" min="0" step="any"
+                          value={cfg.stock ?? ''} placeholder="0"
+                          onChange={(e) => editarStockNuevo(sedeId, 'stock', e.target.value)} />
+                      </td>
+                      <td className="num">
+                        <input className="min-input" type="number" min="0" step="any"
+                          value={cfg.minimo ?? ''} placeholder="0"
+                          onChange={(e) => editarStockNuevo(sedeId, 'minimo', e.target.value)} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
           <button className="btn" type="submit">Crear producto</button>
+        </div>
         </form>
         {msg && <p className={`inline-msg ${msg.err ? 'err' : ''}`}>{msg.text}</p>}
       </section>
@@ -223,9 +276,15 @@ export default function Productos() {
                       <td><span className={`badge ${p.activo ? 'ok' : 'low'}`}>{p.activo ? 'ACTIVO' : 'DE BAJA'}</span></td>
                       <td>
                         {p.activo ? (
-                          <button className="btn small secondary" onClick={() => eliminarGlobal(p.id, p.nombre)}>Baja total</button>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button className="btn small secondary" onClick={() => eliminarGlobal(p.id, p.nombre)}>Baja total</button>
+                            <button className="btn small secondary" onClick={() => borrarDefinitivo(p.id, p.nombre)}>Borrar</button>
+                          </div>
                         ) : (
-                          <button className="btn small" onClick={() => reactivar(p.id)}>Reactivar</button>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button className="btn small" onClick={() => reactivar(p.id)}>Reactivar</button>
+                            <button className="btn small secondary" onClick={() => borrarDefinitivo(p.id, p.nombre)}>Borrar</button>
+                          </div>
                         )}
                       </td>
                     </tr>

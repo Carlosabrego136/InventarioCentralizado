@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const { skuCodigo, nombre, unidadMedida, precioVenta, sedes } = req.body;
+      const { skuCodigo, nombre, unidadMedida, precioVenta, sedes, stockPorSede } = req.body;
       if (!nombre || !unidadMedida || precioVenta === undefined || precioVenta === '') {
         return res.status(400).json({ error: 'Faltan datos del producto' });
       }
@@ -36,11 +36,15 @@ export default async function handler(req, res) {
       const producto = rows[0];
 
       for (const sedeId of sedesElegidas) {
+        const cfg = (stockPorSede && stockPorSede[sedeId]) || {};
+        const stock = Number(cfg.stock) || 0;
+        const minimo = Number(cfg.minimo) || 0;
         await query(
           `INSERT INTO inventario_sedes (sede_id, producto_id, stock_actual, stock_minimo, activo)
-           VALUES ($1, $2, 0, 0, true)
-           ON CONFLICT (sede_id, producto_id) DO UPDATE SET activo = true`,
-          [sedeId, producto.id]
+           VALUES ($1, $2, $3, $4, true)
+           ON CONFLICT (sede_id, producto_id) DO UPDATE SET
+             activo = true, stock_actual = EXCLUDED.stock_actual, stock_minimo = EXCLUDED.stock_minimo`,
+          [sedeId, producto.id, stock, minimo]
         );
       }
 
@@ -100,17 +104,41 @@ export default async function handler(req, res) {
 
   if (req.method === 'DELETE') {
     try {
-      const { id } = req.query;
+      const { id, permanente } = req.query;
       if (!id) return res.status(400).json({ error: 'Falta el id del producto' });
-      // Baja lógica GLOBAL — quita el producto de TODAS las tiendas.
-      // Para quitarlo solo de una tienda en particular, usa el toggle
-      // por sede en vez de este botón.
       const prodRes = await query('SELECT nombre FROM productos WHERE id=$1', [id]);
+      const nombre = prodRes.rows[0]?.nombre || 'producto';
+
+      if (permanente === '1') {
+        const usoRes = await query(
+          `SELECT
+             (SELECT COUNT(*) FROM detalle_ventas WHERE producto_id=$1) AS ventas,
+             (SELECT COUNT(*) FROM traspasos WHERE producto_id=$1) AS traspasos`,
+          [id]
+        );
+        const { ventas, traspasos } = usoRes.rows[0];
+        if (Number(ventas) > 0 || Number(traspasos) > 0) {
+          return res.status(400).json({
+            error: `No se puede borrar "${nombre}" porque ya tiene ventas o traspasos registrados. Usa "Dar de baja" en su lugar — así se conserva el historial.`,
+          });
+        }
+        await query('DELETE FROM inventario_sedes WHERE producto_id=$1', [id]);
+        await query('DELETE FROM productos WHERE id=$1', [id]);
+        await logEvento({
+          origen: 'Cristian (admin)',
+          tipo: 'producto_borrado',
+          descripcion: `Borró definitivamente "${nombre}"`,
+        });
+        return res.status(200).json({ ok: true, borrado: true });
+      }
+
+      // Baja lógica GLOBAL — quita el producto de TODAS las tiendas, pero
+      // conserva su historial de ventas/traspasos.
       await query('UPDATE productos SET activo = false WHERE id = $1', [id]);
       await logEvento({
         origen: 'Cristian (admin)',
         tipo: 'producto_baja',
-        descripcion: `Dio de baja "${prodRes.rows[0]?.nombre || 'producto'}" en TODAS las tiendas`,
+        descripcion: `Dio de baja "${nombre}" en TODAS las tiendas`,
       });
       return res.status(200).json({ ok: true });
     } catch (err) {

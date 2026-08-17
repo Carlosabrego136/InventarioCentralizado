@@ -12,6 +12,7 @@ const TIPO_LABEL = {
   producto_creado: 'Producto creado',
   producto_editado: 'Producto editado',
   producto_baja: 'Producto dado de baja',
+  producto_borrado: 'Producto borrado para siempre',
   producto_asignado: 'Producto agregado a tienda',
   producto_quitado_tienda: 'Producto quitado de tienda',
   stock_corregido: 'Stock corregido',
