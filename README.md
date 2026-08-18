@@ -122,4 +122,10 @@ de verdad. Es un paso manual, no se corre solo.
 - **Ayuda en pantalla**: cajitas explicando qué es SKU, Stock y Mínimo, justo donde se usan.
 - **`npm run db:limpiar`**: borra el catálogo de prueba (productos, inventario, ventas) para arrancar limpio con datos reales, sin tocar las sedes.
 
-⚠️ Si ya tenías la base de datos inicializada de antes, corre `npm run db:init` de nuevo — es seguro repetirlo y agrega las columnas nuevas (`activo`, `alerta_desde` en `inventario_sedes`).
+## Fase 2: venta completa (precio mayoreo, venta por importe, en espera)
+
+- **Precio mayoreo**: en Productos, puedes ponerle a cualquier producto un precio especial que se activa a partir de cierta cantidad (ej. "$15/kg normal, pero $12/kg desde 5kg"). En el punto de venta aparece como sugerencia, nunca se aplica solo sin que el cajero lo confirme.
+- **Costo/Categoría/Marca/Caducidad**: agregados en la fase anterior, ya en uso en Productos e Inventario.
+- **Ventas en espera**: tabla nueva (`ventas_en_espera`) — el uso real (pausar/retomar un ticket) vive en el proyecto del punto de venta.
+
+⚠️ Corre `npm run db:init` de nuevo — agrega las columnas y la tabla nuevas.

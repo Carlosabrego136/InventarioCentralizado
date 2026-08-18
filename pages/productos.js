@@ -14,7 +14,7 @@ export default function Productos() {
   const [productos, setProductos] = useState([]);
   const [membresias, setMembresias] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [nuevo, setNuevo] = useState({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', costoCompra: '', categoria: '', marca: '', sedes: [], stockPorSede: {} });
+  const [nuevo, setNuevo] = useState({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', costoCompra: '', categoria: '', marca: '', precioMayoreo: '', cantidadMayoreo: '', sedes: [], stockPorSede: {} });
   const [msg, setMsg] = useState(null);
   const [pendientes, setPendientes] = useState({}); // { [id]: {nombre, unidadMedida, precioVenta} }
   const [guardando, setGuardando] = useState(false);
@@ -85,6 +85,8 @@ export default function Productos() {
         costoCompra: nuevo.costoCompra ? parseFloat(nuevo.costoCompra) : null,
         categoria: nuevo.categoria || null,
         marca: nuevo.marca || null,
+        precioMayoreo: nuevo.precioMayoreo ? parseFloat(nuevo.precioMayoreo) : null,
+        cantidadMayoreo: nuevo.cantidadMayoreo ? parseFloat(nuevo.cantidadMayoreo) : null,
         sedes: nuevo.sedes,
         stockPorSede: nuevo.stockPorSede,
       }),
@@ -92,7 +94,7 @@ export default function Productos() {
     const data = await res.json();
     if (!res.ok) { setMsg({ text: data.error || 'No se pudo crear', err: true }); return; }
     setMsg({ text: `"${data.nombre}" creado y disponible para vender de una vez.`, err: false });
-    setNuevo({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', costoCompra: '', categoria: '', marca: '', sedes: [], stockPorSede: {} });
+    setNuevo({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', costoCompra: '', categoria: '', marca: '', precioMayoreo: '', cantidadMayoreo: '', sedes: [], stockPorSede: {} });
     cargar();
   }
 
@@ -112,6 +114,8 @@ export default function Productos() {
       if (cambios.costoCompra !== undefined) body.costoCompra = cambios.costoCompra === '' ? null : parseFloat(cambios.costoCompra);
       if (cambios.categoria !== undefined) body.categoria = cambios.categoria || null;
       if (cambios.marca !== undefined) body.marca = cambios.marca || null;
+      if (cambios.precioMayoreo !== undefined) body.precioMayoreo = cambios.precioMayoreo === '' ? null : parseFloat(cambios.precioMayoreo);
+      if (cambios.cantidadMayoreo !== undefined) body.cantidadMayoreo = cambios.cantidadMayoreo === '' ? null : parseFloat(cambios.cantidadMayoreo);
       await fetch('/api/productos', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -160,6 +164,7 @@ export default function Productos() {
           <strong>Precio</strong>: el precio de venta base — se puede ajustar puntualmente al cobrar sin cambiar este valor general.<br/>
           <strong>Costo de compra</strong>: opcional — lo que TE cuesta a ti. Con esto el sistema calcula tu % de utilidad automático.<br/>
           <strong>Categoría / Marca</strong>: opcionales, solo para organizar y filtrar más fácil después.<br/>
+          <strong>Precio mayoreo</strong>: opcional — si vendes 5kg o más (tú decides desde cuánto), se puede aplicar este precio especial en vez del normal, sin que el cajero tenga que hacer cuentas.<br/>
           <strong>Stock / Mínimo por tienda</strong>: cada tienda (y la Bodega Central) tiene su propia cantidad, totalmente aparte — la Bodega NO es una copia de lo que tienen las tiendas, es el almacén desde el que se les surte.<br/>
           Si eliges cualquier tienda, la Bodega se agrega sola — tú decides cuánto tiene la Bodega de ese producto.
         </div>
@@ -196,6 +201,16 @@ export default function Productos() {
           <div>
             <label>Marca (opcional)</label>
             <input value={nuevo.marca} onChange={(e) => setNuevo({ ...nuevo, marca: e.target.value })} placeholder="Genérica" />
+          </div>
+          <div>
+            <label>Precio mayoreo (opcional)</label>
+            <input type="number" min="0" step="0.01" value={nuevo.precioMayoreo}
+              onChange={(e) => setNuevo({ ...nuevo, precioMayoreo: e.target.value })} placeholder="0.00" />
+          </div>
+          <div>
+            <label>Desde cuánto (mayoreo)</label>
+            <input type="number" min="0" step="any" value={nuevo.cantidadMayoreo}
+              onChange={(e) => setNuevo({ ...nuevo, cantidadMayoreo: e.target.value })} placeholder={`ej. 5 ${nuevo.unidadMedida}`} />
           </div>
         </div>
 
@@ -252,6 +267,7 @@ export default function Productos() {
                 <tr>
                   <th>SKU</th><th>Nombre</th><th>Unidad</th><th className="num">Precio</th>
                   <th className="num">Costo</th><th className="num">Utilidad</th>
+                  <th className="num">Mayoreo</th>
                   <th>Categoría</th><th>Marca</th>
                   <th>En qué tiendas</th><th>Estado</th><th></th>
                 </tr>
@@ -295,6 +311,18 @@ export default function Productos() {
                         />
                       </td>
                       <td className="num mono">{utilidad !== null ? `${utilidad}%` : '—'}</td>
+                      <td className="num">
+                        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                          <input className="min-input" style={{ width: 60 }} type="number" min="0" step="0.01"
+                            value={pend.precioMayoreo !== undefined ? pend.precioMayoreo : (p.precio_mayoreo ?? '')}
+                            placeholder="$"
+                            onChange={(e) => editarCampo(p.id, 'precioMayoreo', e.target.value)} />
+                          <input className="min-input" style={{ width: 55 }} type="number" min="0" step="any"
+                            value={pend.cantidadMayoreo !== undefined ? pend.cantidadMayoreo : (p.cantidad_mayoreo ?? '')}
+                            placeholder="desde"
+                            onChange={(e) => editarCampo(p.id, 'cantidadMayoreo', e.target.value)} />
+                        </div>
+                      </td>
                       <td>
                         <input
                           className="min-input" style={{ width: 100 }}

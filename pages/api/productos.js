@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const { skuCodigo, nombre, unidadMedida, precioVenta, costoCompra, categoria, marca, sedes, stockPorSede } = req.body;
+      const { skuCodigo, nombre, unidadMedida, precioVenta, costoCompra, categoria, marca, precioMayoreo, cantidadMayoreo, sedes, stockPorSede } = req.body;
       if (!nombre || !unidadMedida || precioVenta === undefined || precioVenta === '') {
         return res.status(400).json({ error: 'Faltan datos del producto' });
       }
@@ -29,9 +29,9 @@ export default async function handler(req, res) {
       }
 
       const { rows } = await query(
-        `INSERT INTO productos (sku_codigo, nombre, unidad_medida, precio_venta, costo_compra, categoria, marca)
-         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-        [skuCodigo || null, nombre, unidadMedida, precioVenta, costoCompra || null, categoria || null, marca || null]
+        `INSERT INTO productos (sku_codigo, nombre, unidad_medida, precio_venta, costo_compra, categoria, marca, precio_mayoreo, cantidad_mayoreo)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+        [skuCodigo || null, nombre, unidadMedida, precioVenta, costoCompra || null, categoria || null, marca || null, precioMayoreo || null, cantidadMayoreo || null]
       );
       const producto = rows[0];
 
@@ -66,7 +66,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'PATCH') {
     try {
-      const { id, skuCodigo, nombre, unidadMedida, precioVenta, costoCompra, categoria, marca, activo } = req.body;
+      const { id, skuCodigo, nombre, unidadMedida, precioVenta, costoCompra, categoria, marca, precioMayoreo, cantidadMayoreo, activo } = req.body;
       if (!id) return res.status(400).json({ error: 'Falta el id del producto' });
       const { rows } = await query(
         `UPDATE productos SET
@@ -77,7 +77,9 @@ export default async function handler(req, res) {
            costo_compra = COALESCE($6, costo_compra),
            categoria = COALESCE($7, categoria),
            marca = COALESCE($8, marca),
-           activo = COALESCE($9, activo)
+           precio_mayoreo = COALESCE($9, precio_mayoreo),
+           cantidad_mayoreo = COALESCE($10, cantidad_mayoreo),
+           activo = COALESCE($11, activo)
          WHERE id = $1 RETURNING *`,
         [
           id,
@@ -88,6 +90,8 @@ export default async function handler(req, res) {
           costoCompra ?? null,
           categoria ?? null,
           marca ?? null,
+          precioMayoreo ?? null,
+          cantidadMayoreo ?? null,
           activo === undefined ? null : activo,
         ]
       );

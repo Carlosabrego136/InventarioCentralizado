@@ -95,3 +95,18 @@ ALTER TABLE productos ADD COLUMN IF NOT EXISTS costo_compra DECIMAL(10,2);
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS categoria VARCHAR(80);
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS marca VARCHAR(80);
 ALTER TABLE inventario_sedes ADD COLUMN IF NOT EXISTS fecha_caducidad DATE;
+
+-- ============================================================
+-- Migración: precio de mayoreo (a partir de cierta cantidad) y
+-- ventas en espera (para pausar un ticket y retomarlo después).
+-- ============================================================
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS precio_mayoreo DECIMAL(10,2);
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS cantidad_mayoreo DECIMAL(10,3);
+
+CREATE TABLE IF NOT EXISTS ventas_en_espera (
+    id SERIAL PRIMARY KEY,
+    sede_id INT REFERENCES sedes(id),
+    nota VARCHAR(150),
+    ticket JSONB NOT NULL,
+    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
