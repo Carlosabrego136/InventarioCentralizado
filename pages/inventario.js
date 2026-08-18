@@ -8,13 +8,23 @@ export async function getServerSideProps({ req }) {
   return { props: {} };
 }
 
+function estadoCaducidad(fecha) {
+  if (!fecha) return null;
+  const hoy = new Date();
+  const f = new Date(fecha + 'T00:00:00');
+  const dias = Math.round((f - hoy) / 86400000);
+  if (dias < 0) return { texto: 'CADUCADO', clase: 'low' };
+  if (dias <= 15) return { texto: `CADUCA EN ${dias}D`, clase: 'low' };
+  return null;
+}
+
 export default function Inventario() {
   const router = useRouter();
   const [sedes, setSedes] = useState([]);
   const [sedeId, setSedeId] = useState(null);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [pendientes, setPendientes] = useState({}); // { [producto_id]: {stockActual, stockMinimo} }
+  const [pendientes, setPendientes] = useState({});
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
@@ -57,6 +67,7 @@ export default function Inventario() {
       const body = { productoId: Number(productoId) };
       if (cambios.stockActual !== undefined) body.stockActual = parseFloat(cambios.stockActual);
       if (cambios.stockMinimo !== undefined) body.stockMinimo = parseFloat(cambios.stockMinimo);
+      if (cambios.fechaCaducidad !== undefined) body.fechaCaducidad = cambios.fechaCaducidad || null;
       await fetch(`/api/inventario?sedeId=${sedeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -98,13 +109,12 @@ export default function Inventario() {
         </div>
 
         <div className="help-box">
-          <strong>SKU</strong>: código interno del producto, solo para identificarlo rápido (opcional, no afecta nada si lo dejas vacío).<br/>
-          <strong>Stock</strong>: cuántas unidades hay AHORA MISMO en esta tienda — corrígelo aquí después de un conteo físico.<br/>
-          <strong>Mínimo</strong>: cuando el stock llegue a este número o menos, el producto aparece en Alertas para resurtir. Ponlo en 0 si no quieres que avise nunca.<br/>
-          Para agregar productos nuevos a esta tienda, ve a la página <strong>Productos</strong>. Para quitar uno solo de esta tienda (sin afectar a las demás), usa el botón "Quitar".
+          <strong>SKU</strong>: código interno del producto, solo para identificarlo rápido (opcional).<br/>
+          <strong>Stock</strong>: cuántas unidades hay AHORA MISMO en esta tienda.<br/>
+          <strong>Mínimo</strong>: cuando el stock llegue a este número o menos, aparece en Alertas. Ponlo en 0 para que nunca avise.<br/>
+          <strong>Caducidad</strong>: opcional — solo si ese lote de producto en esta tienda caduca. Déjalo vacío si no aplica. Avisa 15 días antes.<br/>
+          Para agregar productos nuevos, ve a <strong>Productos</strong>. Para quitar uno solo de esta tienda, usa "Quitar".
         </div>
-
-        <p className="catalogo-note">◆ Para agregar productos nuevos a esta tienda, ve a la página Productos</p>
 
         {loading || !data ? (
           <p className="empty-state">Cargando…</p>
@@ -120,6 +130,7 @@ export default function Inventario() {
                   <th>Unidad</th>
                   <th>Stock</th>
                   <th className="num">Mínimo</th>
+                  <th>Caducidad</th>
                   <th>Estado</th>
                   <th></th>
                 </tr>
@@ -129,7 +140,9 @@ export default function Inventario() {
                   const pend = pendientes[p.producto_id] || {};
                   const stockVal = pend.stockActual !== undefined ? pend.stockActual : p.stock_actual;
                   const minimoVal = pend.stockMinimo !== undefined ? pend.stockMinimo : p.stock_minimo;
+                  const caducidadVal = pend.fechaCaducidad !== undefined ? pend.fechaCaducidad : (p.fecha_caducidad ? p.fecha_caducidad.slice(0, 10) : '');
                   const bajo = Number(minimoVal) > 0 && Number(stockVal) <= Number(minimoVal);
+                  const caduca = estadoCaducidad(caducidadVal);
                   return (
                     <tr key={p.producto_id}>
                       <td className="mono dim">{p.sku_codigo}</td>
@@ -152,7 +165,18 @@ export default function Inventario() {
                         />
                       </td>
                       <td>
-                        <span className={`badge ${bajo ? 'low' : 'ok'}`}>{bajo ? 'BAJO MÍNIMO' : 'OK'}</span>
+                        <input
+                          type="date"
+                          value={caducidadVal}
+                          onChange={(e) => editarCampo(p.producto_id, 'fechaCaducidad', e.target.value)}
+                          style={{ padding: '6px 8px', fontSize: 12.5 }}
+                        />
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          <span className={`badge ${bajo ? 'low' : 'ok'}`}>{bajo ? 'BAJO MÍNIMO' : 'OK'}</span>
+                          {caduca && <span className="badge low">{caduca.texto}</span>}
+                        </div>
                       </td>
                       <td>
                         <button className="btn small secondary" onClick={() => quitarDeTienda(p.producto_id, p.nombre)}>

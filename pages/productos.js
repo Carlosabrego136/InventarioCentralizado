@@ -14,7 +14,7 @@ export default function Productos() {
   const [productos, setProductos] = useState([]);
   const [membresias, setMembresias] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [nuevo, setNuevo] = useState({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', sedes: [], stockPorSede: {} });
+  const [nuevo, setNuevo] = useState({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', costoCompra: '', categoria: '', marca: '', sedes: [], stockPorSede: {} });
   const [msg, setMsg] = useState(null);
   const [pendientes, setPendientes] = useState({}); // { [id]: {nombre, unidadMedida, precioVenta} }
   const [guardando, setGuardando] = useState(false);
@@ -82,6 +82,9 @@ export default function Productos() {
         nombre: nuevo.nombre,
         unidadMedida: nuevo.unidadMedida,
         precioVenta: parseFloat(nuevo.precioVenta),
+        costoCompra: nuevo.costoCompra ? parseFloat(nuevo.costoCompra) : null,
+        categoria: nuevo.categoria || null,
+        marca: nuevo.marca || null,
         sedes: nuevo.sedes,
         stockPorSede: nuevo.stockPorSede,
       }),
@@ -89,7 +92,7 @@ export default function Productos() {
     const data = await res.json();
     if (!res.ok) { setMsg({ text: data.error || 'No se pudo crear', err: true }); return; }
     setMsg({ text: `"${data.nombre}" creado y disponible para vender de una vez.`, err: false });
-    setNuevo({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', sedes: [], stockPorSede: {} });
+    setNuevo({ skuCodigo: '', nombre: '', unidadMedida: 'kg', precioVenta: '', costoCompra: '', categoria: '', marca: '', sedes: [], stockPorSede: {} });
     cargar();
   }
 
@@ -106,6 +109,9 @@ export default function Productos() {
       if (cambios.nombre !== undefined) body.nombre = cambios.nombre;
       if (cambios.unidadMedida !== undefined) body.unidadMedida = cambios.unidadMedida;
       if (cambios.precioVenta !== undefined) body.precioVenta = parseFloat(cambios.precioVenta);
+      if (cambios.costoCompra !== undefined) body.costoCompra = cambios.costoCompra === '' ? null : parseFloat(cambios.costoCompra);
+      if (cambios.categoria !== undefined) body.categoria = cambios.categoria || null;
+      if (cambios.marca !== undefined) body.marca = cambios.marca || null;
       await fetch('/api/productos', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -152,8 +158,10 @@ export default function Productos() {
         <div className="help-box">
           <strong>SKU</strong>: código interno opcional, solo para identificarlo (puedes dejarlo vacío).<br/>
           <strong>Precio</strong>: el precio de venta base — se puede ajustar puntualmente al cobrar sin cambiar este valor general.<br/>
-          <strong>Stock / Mínimo por tienda</strong>: cada tienda (y la Bodega Central) tiene su propia cantidad, totalmente aparte — la Bodega NO es una copia de lo que tienen las tiendas, es el almacén desde el que se les surte. Ponle a cada una la cantidad que de verdad tiene ahora mismo.<br/>
-          Si eliges cualquier tienda, la Bodega se agrega sola (para que Cristian pueda mandarle stock después vía Traspasos) — tú decides cuánto tiene la Bodega de ese producto.
+          <strong>Costo de compra</strong>: opcional — lo que TE cuesta a ti. Con esto el sistema calcula tu % de utilidad automático.<br/>
+          <strong>Categoría / Marca</strong>: opcionales, solo para organizar y filtrar más fácil después.<br/>
+          <strong>Stock / Mínimo por tienda</strong>: cada tienda (y la Bodega Central) tiene su propia cantidad, totalmente aparte — la Bodega NO es una copia de lo que tienen las tiendas, es el almacén desde el que se les surte.<br/>
+          Si eliges cualquier tienda, la Bodega se agrega sola — tú decides cuánto tiene la Bodega de ese producto.
         </div>
         <form onSubmit={crear}>
         <div className="form-row">
@@ -172,9 +180,22 @@ export default function Productos() {
             </select>
           </div>
           <div>
-            <label>Precio</label>
+            <label>Precio de venta</label>
             <input required type="number" min="0" step="0.01" value={nuevo.precioVenta}
               onChange={(e) => setNuevo({ ...nuevo, precioVenta: e.target.value })} placeholder="0.00" />
+          </div>
+          <div>
+            <label>Costo de compra (opcional)</label>
+            <input type="number" min="0" step="0.01" value={nuevo.costoCompra}
+              onChange={(e) => setNuevo({ ...nuevo, costoCompra: e.target.value })} placeholder="0.00" />
+          </div>
+          <div>
+            <label>Categoría (opcional)</label>
+            <input value={nuevo.categoria} onChange={(e) => setNuevo({ ...nuevo, categoria: e.target.value })} placeholder="Especias" />
+          </div>
+          <div>
+            <label>Marca (opcional)</label>
+            <input value={nuevo.marca} onChange={(e) => setNuevo({ ...nuevo, marca: e.target.value })} placeholder="Genérica" />
           </div>
         </div>
 
@@ -230,12 +251,17 @@ export default function Productos() {
               <thead>
                 <tr>
                   <th>SKU</th><th>Nombre</th><th>Unidad</th><th className="num">Precio</th>
+                  <th className="num">Costo</th><th className="num">Utilidad</th>
+                  <th>Categoría</th><th>Marca</th>
                   <th>En qué tiendas</th><th>Estado</th><th></th>
                 </tr>
               </thead>
               <tbody>
                 {productos.map((p) => {
                   const pend = pendientes[p.id] || {};
+                  const precioVal = pend.precioVenta !== undefined ? pend.precioVenta : p.precio_venta;
+                  const costoVal = pend.costoCompra !== undefined ? pend.costoCompra : (p.costo_compra ?? '');
+                  const utilidad = costoVal && precioVal ? (((precioVal - costoVal) / precioVal) * 100).toFixed(1) : null;
                   return (
                     <tr key={p.id} style={{ opacity: p.activo ? 1 : 0.5 }}>
                       <td className="mono dim">{p.sku_codigo || '—'}</td>
@@ -256,8 +282,33 @@ export default function Productos() {
                       <td className="num">
                         <input
                           className="min-input" type="number" min="0" step="0.01"
-                          value={pend.precioVenta !== undefined ? pend.precioVenta : p.precio_venta}
+                          value={precioVal}
                           onChange={(e) => editarCampo(p.id, 'precioVenta', e.target.value)}
+                        />
+                      </td>
+                      <td className="num">
+                        <input
+                          className="min-input" type="number" min="0" step="0.01"
+                          value={costoVal}
+                          placeholder="—"
+                          onChange={(e) => editarCampo(p.id, 'costoCompra', e.target.value)}
+                        />
+                      </td>
+                      <td className="num mono">{utilidad !== null ? `${utilidad}%` : '—'}</td>
+                      <td>
+                        <input
+                          className="min-input" style={{ width: 100 }}
+                          value={pend.categoria !== undefined ? pend.categoria : (p.categoria || '')}
+                          placeholder="—"
+                          onChange={(e) => editarCampo(p.id, 'categoria', e.target.value)}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          className="min-input" style={{ width: 100 }}
+                          value={pend.marca !== undefined ? pend.marca : (p.marca || '')}
+                          placeholder="—"
+                          onChange={(e) => editarCampo(p.id, 'marca', e.target.value)}
                         />
                       </td>
                       <td>

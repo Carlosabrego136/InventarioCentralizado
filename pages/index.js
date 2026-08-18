@@ -32,7 +32,7 @@ export default function Home() {
       setResumen(byId);
 
       const alertasRes = await fetch('/api/alertas').then((r) => r.json());
-      setAlertas(Array.isArray(alertasRes) ? alertasRes.slice(0, 5) : []);
+      setAlertas(Array.isArray(alertasRes?.stock) ? alertasRes.stock.slice(0, 5) : []);
 
       const actividadRes = await fetch('/api/actividad').then((r) => r.json());
       const actById = {};

@@ -17,6 +17,7 @@ const TIPO_LABEL = {
   producto_quitado_tienda: 'Producto quitado de tienda',
   stock_corregido: 'Stock corregido',
   minimo_editado: 'Mínimo editado',
+  caducidad_editada: 'Caducidad editada',
   traspaso: 'Traspaso',
   historial_limpiado: 'Historial limpiado',
 };

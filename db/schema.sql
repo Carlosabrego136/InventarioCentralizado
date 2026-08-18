@@ -86,3 +86,12 @@ CREATE TABLE IF NOT EXISTS bitacora (
 -- ============================================================
 ALTER TABLE inventario_sedes ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE inventario_sedes ADD COLUMN IF NOT EXISTS alerta_desde TIMESTAMP;
+
+-- ============================================================
+-- Migración: costo de compra (% utilidad), categoría, marca,
+-- y fecha de caducidad por lote/tienda.
+-- ============================================================
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS costo_compra DECIMAL(10,2);
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS categoria VARCHAR(80);
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS marca VARCHAR(80);
+ALTER TABLE inventario_sedes ADD COLUMN IF NOT EXISTS fecha_caducidad DATE;
