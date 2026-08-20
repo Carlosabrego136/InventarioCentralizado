@@ -110,3 +110,17 @@ CREATE TABLE IF NOT EXISTS ventas_en_espera (
     ticket JSONB NOT NULL,
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ============================================================
+-- Migración: Finanzas — gastos reales (Cristian define sus
+-- propias categorías, libres, como él las quiera llevar).
+-- ============================================================
+CREATE TABLE IF NOT EXISTS gastos (
+    id SERIAL PRIMARY KEY,
+    sede_id INT REFERENCES sedes(id), -- NULL = gasto general del negocio, no de una tienda
+    concepto VARCHAR(150) NOT NULL,
+    categoria VARCHAR(80),            -- libre: "Renta", "Nómina", "Luz", lo que Cristian quiera
+    monto DECIMAL(10,2) NOT NULL,
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

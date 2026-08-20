@@ -128,4 +128,13 @@ de verdad. Es un paso manual, no se corre solo.
 - **Costo/Categoría/Marca/Caducidad**: agregados en la fase anterior, ya en uso en Productos e Inventario.
 - **Ventas en espera**: tabla nueva (`ventas_en_espera`) — el uso real (pausar/retomar un ticket) vive en el proyecto del punto de venta.
 
-⚠️ Corre `npm run db:init` de nuevo — agrega las columnas y la tabla nuevas.
+## Finanzas (Fase 3)
+
+Módulo nuevo — nada de lo anterior se tocó:
+
+- **Curva de ganancias día por día**: ingresos, gastos+costo, y ganancia neta, en una sola gráfica (hecha con SVG puro, sin librerías nuevas — para no arriesgar el `npm install` en equipos viejos).
+- **Comparativo por tienda**: barras mostrando qué tienda gana más en el mismo rango de fechas.
+- **Gastos**: Cristian los registra como quiera — concepto libre, categoría libre (él decide qué categorías usar), por tienda o generales del negocio.
+- **Ganancia neta = Ingresos − Costo de venta (según el costo de compra que le pusiste a cada producto) − Gastos**. Si un producto no tiene costo de compra cargado, cuenta como $0 en ese cálculo — está explicado en pantalla para que no se preste a confusión.
+
+⚠️ Corre `npm run db:init` de nuevo — agrega la tabla `gastos`.

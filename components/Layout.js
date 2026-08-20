@@ -7,6 +7,7 @@ const NAV = [
   { href: '/productos', label: 'Productos', icon: '✎' },
   { href: '/traspasos', label: 'Traspasos', icon: '⇄' },
   { href: '/reportes', label: 'Reportes', icon: '▦' },
+  { href: '/finanzas', label: 'Finanzas', icon: '$' },
   { href: '/bitacora', label: 'Actividad', icon: '◷' },
   { href: '/alertas', label: 'Alertas', icon: '!' },
 ];

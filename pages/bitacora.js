@@ -18,6 +18,8 @@ const TIPO_LABEL = {
   stock_corregido: 'Stock corregido',
   minimo_editado: 'Mínimo editado',
   caducidad_editada: 'Caducidad editada',
+  gasto_registrado: 'Gasto registrado',
+  gasto_borrado: 'Gasto borrado',
   traspaso: 'Traspaso',
   historial_limpiado: 'Historial limpiado',
 };
