@@ -137,4 +137,10 @@ Módulo nuevo — nada de lo anterior se tocó:
 - **Gastos**: Cristian los registra como quiera — concepto libre, categoría libre (él decide qué categorías usar), por tienda o generales del negocio.
 - **Ganancia neta = Ingresos − Costo de venta (según el costo de compra que le pusiste a cada producto) − Gastos**. Si un producto no tiene costo de compra cargado, cuenta como $0 en ese cálculo — está explicado en pantalla para que no se preste a confusión.
 
-⚠️ Corre `npm run db:init` de nuevo — agrega la tabla `gastos`.
+## Caja, movimientos y notificaciones (Fase 4)
+
+- **Caja** (nueva página): historial de cortes (apertura/intermedio/cierre) de todas las tiendas, con la diferencia (sobrante/faltante) bien marcada en color. También el historial de depósitos y retiros de efectivo.
+- **Todo se hace desde el punto de venta** — aquí en el central es solo supervisión, en tiempo real, de todas las tiendas juntas.
+- **Campanita de notificaciones** (esquina superior del contenido): mismo cálculo que Alertas (stock bajo + caducidad), pero accesible desde cualquier página, con contador en vivo.
+
+⚠️ Corre `npm run db:init` de nuevo — agrega las tablas `cortes_caja`, `movimientos_caja`, y la columna `metodo_pago` en `ventas`.

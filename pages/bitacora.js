@@ -20,6 +20,11 @@ const TIPO_LABEL = {
   caducidad_editada: 'Caducidad editada',
   gasto_registrado: 'Gasto registrado',
   gasto_borrado: 'Gasto borrado',
+  caja_apertura: 'Caja abierta',
+  caja_intermedio: 'Corte intermedio',
+  caja_cierre: 'Caja cerrada',
+  caja_retiro: 'Retiro de efectivo',
+  caja_deposito: 'Depósito de efectivo',
   traspaso: 'Traspaso',
   historial_limpiado: 'Historial limpiado',
 };

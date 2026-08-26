@@ -124,3 +124,33 @@ CREATE TABLE IF NOT EXISTS gastos (
     fecha DATE NOT NULL DEFAULT CURRENT_DATE,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ============================================================
+-- Migración: Caja — cortes (apertura/intermedio/cierre) con
+-- detección de sobrante/faltante, movimientos de efectivo
+-- (depósitos/retiros), y método de pago por venta.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS cortes_caja (
+    id SERIAL PRIMARY KEY,
+    sede_id INT REFERENCES sedes(id) NOT NULL,
+    cajero VARCHAR(100) NOT NULL,
+    tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('apertura','intermedio','cierre')),
+    fondo_inicial DECIMAL(10,2),
+    efectivo_contado DECIMAL(10,2),
+    efectivo_esperado DECIMAL(10,2),
+    diferencia DECIMAL(10,2),
+    nota TEXT,
+    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS movimientos_caja (
+    id SERIAL PRIMARY KEY,
+    sede_id INT REFERENCES sedes(id) NOT NULL,
+    cajero VARCHAR(100) NOT NULL,
+    tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('deposito','retiro')),
+    monto DECIMAL(10,2) NOT NULL,
+    concepto VARCHAR(150),
+    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS metodo_pago VARCHAR(20) NOT NULL DEFAULT 'efectivo';
