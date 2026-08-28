@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getSession } from '../lib/auth';
 import { formatFechaHora } from '../lib/format';
+import { descargarCSV } from '../lib/csv';
 
 export async function getServerSideProps({ req }) {
   const session = getSession(req);
@@ -48,6 +49,30 @@ export default function Caja() {
 
   useEffect(() => { buscar(); }, []);
 
+  function exportarCortesCSV() {
+    const filas = cortes.map((c) => {
+      const fh = formatFechaHora(c.fecha);
+      return [
+        `${fh.dia} ${fh.fecha} ${fh.hora}`, c.sede_nombre, c.cajero, TIPO_LABEL[c.tipo] || c.tipo,
+        c.fondo_inicial !== null ? Number(c.fondo_inicial).toFixed(2) : '',
+        c.efectivo_contado !== null ? Number(c.efectivo_contado).toFixed(2) : '',
+        c.efectivo_esperado !== null ? Number(c.efectivo_esperado).toFixed(2) : '',
+        c.diferencia !== null ? Number(c.diferencia).toFixed(2) : '',
+      ];
+    });
+    descargarCSV(`cortes-caja_${desde}_a_${hasta}.csv`,
+      ['Fecha', 'Tienda', 'Cajero', 'Tipo', 'Fondo', 'Contado', 'Esperado', 'Diferencia'], filas);
+  }
+
+  function exportarMovimientosCSV() {
+    const filas = movimientos.map((m) => {
+      const fh = formatFechaHora(m.fecha);
+      return [`${fh.dia} ${fh.fecha} ${fh.hora}`, m.sede_nombre, m.cajero, m.tipo === 'retiro' ? 'Retiro' : 'Depósito', m.concepto || '', Number(m.monto).toFixed(2)];
+    });
+    descargarCSV(`movimientos-caja_${desde}_a_${hasta}.csv`,
+      ['Fecha', 'Tienda', 'Cajero', 'Tipo', 'Concepto', 'Monto'], filas);
+  }
+
   return (
     <div>
       <header className="topbar">
@@ -82,7 +107,10 @@ export default function Caja() {
       </section>
 
       <section className="panel">
-        <h2 className="panel-title">Historial de cortes</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 10 }}>
+          <h2 className="panel-title" style={{ margin: 0 }}>Historial de cortes</h2>
+          <button className="btn secondary small" onClick={exportarCortesCSV} disabled={cortes.length === 0}>Exportar CSV</button>
+        </div>
         {loading ? (
           <p className="empty-state">Cargando…</p>
         ) : cortes.length === 0 ? (
@@ -128,7 +156,10 @@ export default function Caja() {
       </section>
 
       <section className="panel">
-        <h2 className="panel-title">Depósitos y retiros</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 10 }}>
+          <h2 className="panel-title" style={{ margin: 0 }}>Depósitos y retiros</h2>
+          <button className="btn secondary small" onClick={exportarMovimientosCSV} disabled={movimientos.length === 0}>Exportar CSV</button>
+        </div>
         {loading ? (
           <p className="empty-state">Cargando…</p>
         ) : movimientos.length === 0 ? (

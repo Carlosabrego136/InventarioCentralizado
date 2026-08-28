@@ -144,3 +144,11 @@ Módulo nuevo — nada de lo anterior se tocó:
 - **Campanita de notificaciones** (esquina superior del contenido): mismo cálculo que Alertas (stock bajo + caducidad), pero accesible desde cualquier página, con contador en vivo.
 
 ⚠️ Corre `npm run db:init` de nuevo — agrega las tablas `cortes_caja`, `movimientos_caja`, y la columna `metodo_pago` en `ventas`.
+
+## Exportar a CSV (Fase 5)
+
+Reportes, Finanzas (curva de ganancias y gastos), y Caja (cortes y
+movimientos) tienen botón **"Exportar CSV"** — descarga un archivo que
+abre directo en Excel o Google Sheets, con el filtro de fecha/tienda que
+tengas puesto en pantalla. Útil para llevárselo a un contador o guardar
+un respaldo. No requiere nada nuevo instalado — se genera en el navegador.

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getSession } from '../lib/auth';
 import { formatFechaHora } from '../lib/format';
+import { descargarCSV } from '../lib/csv';
 import { CurvaGanancias, BarrasComparativo } from '../components/Charts';
 
 export async function getServerSideProps({ req }) {
@@ -76,6 +77,21 @@ export default function Finanzas() {
 
   const t = data?.totales;
 
+  function exportarFinanzasCSV() {
+    if (!data?.serie) return;
+    const filas = data.serie.map((d) => [d.dia, d.ingresos.toFixed(2), d.costo.toFixed(2), d.gastos.toFixed(2), d.ganancia.toFixed(2)]);
+    descargarCSV(`finanzas_${desde}_a_${hasta}.csv`,
+      ['Día', 'Ingresos', 'Costo de venta', 'Gastos', 'Ganancia neta'], filas);
+  }
+
+  function exportarGastosCSV() {
+    const filas = gastos.map((g) => [
+      new Date(g.fecha).toLocaleDateString('es-MX'), g.concepto, g.categoria || '', g.sede_nombre || 'General', Number(g.monto).toFixed(2),
+    ]);
+    descargarCSV(`gastos_${desde}_a_${hasta}.csv`,
+      ['Fecha', 'Concepto', 'Categoría', 'Sede', 'Monto'], filas);
+  }
+
   return (
     <div>
       <header className="topbar">
@@ -137,7 +153,10 @@ export default function Finanzas() {
           </div>
 
           <section className="panel">
-            <h2 className="panel-title">Curva de ganancias — día por día</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+              <h2 className="panel-title" style={{ margin: 0 }}>Curva de ganancias — día por día</h2>
+              <button className="btn secondary small" onClick={exportarFinanzasCSV}>Exportar CSV</button>
+            </div>
             <CurvaGanancias serie={data.serie} />
           </section>
 
@@ -191,7 +210,10 @@ export default function Finanzas() {
       </section>
 
       <section className="panel">
-        <h2 className="panel-title">Gastos en este rango</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 10 }}>
+          <h2 className="panel-title" style={{ margin: 0 }}>Gastos en este rango</h2>
+          <button className="btn secondary small" onClick={exportarGastosCSV} disabled={gastos.length === 0}>Exportar CSV</button>
+        </div>
         {gastos.length === 0 ? (
           <p className="empty-state">No hay gastos registrados en este rango todavía.</p>
         ) : (
