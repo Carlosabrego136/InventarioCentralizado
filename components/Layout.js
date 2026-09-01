@@ -12,6 +12,7 @@ const NAV = [
   { href: '/finanzas', label: 'Finanzas', icon: '$' },
   { href: '/bitacora', label: 'Actividad', icon: '◷' },
   { href: '/alertas', label: 'Alertas', icon: '!' },
+  { href: '/usuarios', label: 'Usuarios', icon: '👤' },
 ];
 
 export default function Layout({ children }) {

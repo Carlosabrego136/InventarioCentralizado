@@ -154,3 +154,22 @@ CREATE TABLE IF NOT EXISTS movimientos_caja (
 );
 
 ALTER TABLE ventas ADD COLUMN IF NOT EXISTS metodo_pago VARCHAR(20) NOT NULL DEFAULT 'efectivo';
+
+-- ============================================================
+-- Migración: usuarios individuales del punto de venta. Antes cada
+-- tienda compartía una sola cuenta (tienda1/tienda2/tienda3); ahora
+-- Cristian puede crear una cuenta por trabajador desde "Usuarios" en
+-- el central, y sigue pudiendo tener también las cuentas compartidas
+-- de siempre (no se quitan, son un respaldo si no ha dado de alta a
+-- alguien todavía).
+-- ============================================================
+CREATE TABLE IF NOT EXISTS usuarios (
+    id SERIAL PRIMARY KEY,
+    usuario VARCHAR(40) NOT NULL UNIQUE,       -- login, en minúsculas
+    password_hash VARCHAR(160) NOT NULL,
+    nombre VARCHAR(100) NOT NULL,              -- nombre real del trabajador
+    rol VARCHAR(20) NOT NULL CHECK (rol IN ('admin','tienda')),
+    sede_id INT REFERENCES sedes(id),          -- NULL si rol='admin'
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
