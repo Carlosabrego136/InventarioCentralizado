@@ -47,6 +47,7 @@ button{ font-family:var(--font-body); }
   border-right:1px solid var(--border);
   display:flex; flex-direction:column;
   padding:26px 16px; position:sticky; top:0; height:100vh;
+  overflow-y:auto;
 }
 .brand{ font-family:var(--font-display); font-weight:700; font-size:30px; padding:0 8px 4px; }
 .brand span{ color:var(--danger); }
