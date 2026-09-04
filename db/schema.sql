@@ -173,3 +173,14 @@ CREATE TABLE IF NOT EXISTS usuarios (
     activo BOOLEAN NOT NULL DEFAULT TRUE,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ============================================================
+-- Migración: nombres reales de las sedes (Cristian los mandó por
+-- WhatsApp). Solo renombra si todavía tienen el nombre de ejemplo —
+-- segura de correr varias veces, no revive nombres viejos si ya se
+-- cambiaron a mano después.
+-- ============================================================
+UPDATE sedes SET nombre = 'Bodega Mórelos'    WHERE nombre = 'Bodega Central';
+UPDATE sedes SET nombre = 'Zaragoza centro'   WHERE nombre = 'Tienda 1 · Centro';
+UPDATE sedes SET nombre = 'San Miguel avenida' WHERE nombre = 'Tienda 2 · Norte';
+UPDATE sedes SET nombre = 'San Miguel centro' WHERE nombre = 'Tienda 3 · Express';

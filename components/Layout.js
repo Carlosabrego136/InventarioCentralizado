@@ -57,7 +57,7 @@ export default function Layout({ children }) {
           ))}
         </nav>
         <div className="sidebar-foot">
-          Bodega Central + 3 tiendas<br />conectadas en tiempo real.
+          Bodega + 3 tiendas<br />conectadas en tiempo real.
           <br /><br />
           <button className="logout-link" onClick={salir}>Cerrar sesión</button>
         </div>

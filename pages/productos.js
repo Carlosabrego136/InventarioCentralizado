@@ -165,7 +165,7 @@ export default function Productos() {
           <strong>Costo de compra</strong>: opcional — lo que TE cuesta a ti. Con esto el sistema calcula tu % de utilidad automático.<br/>
           <strong>Categoría / Marca</strong>: opcionales, solo para organizar y filtrar más fácil después.<br/>
           <strong>Precio mayoreo</strong>: opcional — si vendes 5kg o más (tú decides desde cuánto), se puede aplicar este precio especial en vez del normal, sin que el cajero tenga que hacer cuentas.<br/>
-          <strong>Stock / Mínimo por tienda</strong>: cada tienda (y la Bodega Central) tiene su propia cantidad, totalmente aparte — la Bodega NO es una copia de lo que tienen las tiendas, es el almacén desde el que se les surte.<br/>
+          <strong>Stock / Mínimo por tienda</strong>: cada tienda (y la Bodega) tiene su propia cantidad, totalmente aparte — la Bodega NO es una copia de lo que tienen las tiendas, es el almacén desde el que se les surte.<br/>
           Si eliges cualquier tienda, la Bodega se agrega sola — tú decides cuánto tiene la Bodega de ese producto.
         </div>
         <form onSubmit={crear}>

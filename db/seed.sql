@@ -2,10 +2,10 @@
 -- editando este archivo (o cargándolo después desde un panel de importación).
 
 INSERT INTO sedes (nombre, tipo, catalogo_reducido) VALUES
-  ('Bodega Central', 'bodega', FALSE),
-  ('Tienda 1 · Centro', 'tienda', FALSE),
-  ('Tienda 2 · Norte', 'tienda', FALSE),
-  ('Tienda 3 · Express', 'tienda', TRUE)
+  ('Bodega Mórelos', 'bodega', FALSE),
+  ('Zaragoza centro', 'tienda', FALSE),
+  ('San Miguel avenida', 'tienda', FALSE),
+  ('San Miguel centro', 'tienda', TRUE)
 ON CONFLICT (nombre) DO NOTHING;
 
 INSERT INTO productos (sku_codigo, nombre, unidad_medida, precio_venta, disponible_reducido) VALUES
