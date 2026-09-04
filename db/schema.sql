@@ -184,3 +184,13 @@ UPDATE sedes SET nombre = 'Bodega Mórelos'    WHERE nombre = 'Bodega Central';
 UPDATE sedes SET nombre = 'Zaragoza centro'   WHERE nombre = 'Tienda 1 · Centro';
 UPDATE sedes SET nombre = 'San Miguel avenida' WHERE nombre = 'Tienda 2 · Norte';
 UPDATE sedes SET nombre = 'San Miguel centro' WHERE nombre = 'Tienda 3 · Express';
+
+-- ============================================================
+-- Migración: datos del recibo/ticket, editables por tienda desde
+-- el central (dirección, teléfono, mensaje de pie de página).
+-- Todo opcional — si no se llena, el ticket usa el mensaje genérico
+-- de siempre.
+-- ============================================================
+ALTER TABLE sedes ADD COLUMN IF NOT EXISTS recibo_direccion VARCHAR(200);
+ALTER TABLE sedes ADD COLUMN IF NOT EXISTS recibo_telefono VARCHAR(40);
+ALTER TABLE sedes ADD COLUMN IF NOT EXISTS recibo_mensaje VARCHAR(200);

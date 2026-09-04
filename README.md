@@ -152,3 +152,13 @@ movimientos) tienen botón **"Exportar CSV"** — descarga un archivo que
 abre directo en Excel o Google Sheets, con el filtro de fecha/tienda que
 tengas puesto en pantalla. Útil para llevárselo a un contador o guardar
 un respaldo. No requiere nada nuevo instalado — se genera en el navegador.
+
+## Ticket personalizado por tienda (nuevo)
+
+Página **Ticket** en el menú — Cristian le puede poner a cada tienda su
+propia dirección, teléfono y mensaje de pie de página para el recibo que
+se imprime en el punto de venta. Todo opcional; si una tienda no tiene
+nada configurado, el ticket usa el mensaje genérico de siempre.
+
+⚠️ Corre `npm run db:init` de nuevo — agrega 3 columnas nuevas a `sedes`
+(`recibo_direccion`, `recibo_telefono`, `recibo_mensaje`).

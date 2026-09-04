@@ -13,6 +13,7 @@ const NAV = [
   { href: '/bitacora', label: 'Actividad', icon: '◷' },
   { href: '/alertas', label: 'Alertas', icon: '!' },
   { href: '/usuarios', label: 'Usuarios', icon: '👤' },
+  { href: '/recibo', label: 'Ticket', icon: '🧾' },
 ];
 
 export default function Layout({ children }) {

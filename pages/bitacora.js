@@ -27,6 +27,9 @@ const TIPO_LABEL = {
   caja_deposito: 'Depósito de efectivo',
   traspaso: 'Traspaso',
   historial_limpiado: 'Historial limpiado',
+  usuario_creado: 'Usuario creado',
+  usuario_editado: 'Usuario editado',
+  ticket_editado: 'Ticket editado',
 };
 
 export default function Bitacora() {
