@@ -462,3 +462,20 @@ button.btn.full{ width:100%; }
 @media (max-width: 880px){
   .notif-bell-wrap{ top:14px; right:16px; }
 }
+
+/* ============================================================
+   Inventario: buscador, atajos y entrada de mercancía
+   ============================================================ */
+.inv-buscador{ display:flex; align-items:center; gap:14px; margin:18px 0 8px; }
+.inv-buscador-input{ flex:1; font-size:17px; padding:13px 15px; }
+.inv-contador{ font-family:var(--font-mono); font-size:13px; color:var(--text-dim); white-space:nowrap; }
+.inv-atajos{ display:flex; flex-wrap:wrap; gap:6px 18px; font-size:12.5px; color:var(--text-muted); margin-bottom:14px; }
+.inv-atajos kbd{
+  font-family:var(--font-mono); font-size:11.5px; font-weight:700; color:var(--text);
+  background:var(--surface-2); border:1px solid var(--border); border-bottom-width:2px;
+  border-radius:6px; padding:1px 6px; margin-right:3px;
+}
+.entrada-input{ border-color:var(--accent); }
+.entrada-input:focus{ border-color:var(--danger); box-shadow:0 0 0 3px var(--danger-soft); }
+.quedara{ font-size:15px; color:var(--ok); }
+tr.fila-editada td{ background:var(--accent-soft); }

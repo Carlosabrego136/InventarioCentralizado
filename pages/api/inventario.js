@@ -32,8 +32,43 @@ export default async function handler(req, res) {
 
   if (req.method === 'PATCH') {
     try {
-      const { productoId, stockMinimo, stockActual, disponible, fechaCaducidad } = req.body;
+      const { productoId, stockMinimo, stockActual, disponible, fechaCaducidad, entrada } = req.body;
       if (productoId === undefined) return res.status(400).json({ error: 'Faltan datos' });
+
+      // ---- Entrada de mercancía (resurtido): se SUMA al stock actual ----
+      // La suma la hace la base de datos en una sola sentencia, así que si en
+      // el mismo momento se vende algo en el POS, nada se pisa ni se pierde.
+      if (entrada !== undefined) {
+        if (stockMinimo !== undefined || stockActual !== undefined || disponible !== undefined || fechaCaducidad !== undefined) {
+          return res.status(400).json({ error: 'La entrada se registra por separado de otros cambios' });
+        }
+        const cant = Math.round(Number(entrada) * 1000) / 1000;
+        if (!Number.isFinite(cant) || cant <= 0 || cant >= 1000000) {
+          return res.status(400).json({ error: 'La entrada debe ser un número mayor a 0' });
+        }
+        const upd = await query(
+          `UPDATE inventario_sedes SET
+             stock_actual = stock_actual + $3::numeric,
+             alerta_desde = CASE WHEN stock_minimo > 0 AND stock_actual + $3::numeric <= stock_minimo
+                                 THEN COALESCE(alerta_desde, NOW()) ELSE NULL END
+           WHERE sede_id = $1 AND producto_id = $2 AND activo = true
+           RETURNING stock_actual`,
+          [sedeId, productoId, cant]
+        );
+        if (upd.rows.length === 0) {
+          return res.status(404).json({ error: 'Ese producto no está activo en esta tienda' });
+        }
+        const [prodRes, sedeRes] = await Promise.all([
+          query('SELECT nombre, unidad_medida FROM productos WHERE id=$1', [productoId]),
+          query('SELECT nombre FROM sedes WHERE id=$1', [sedeId]),
+        ]);
+        const prod = prodRes.rows[0] || {};
+        await logEvento({
+          sedeId, origen: 'Cristian (admin)', tipo: 'entrada_mercancia',
+          descripcion: `Entrada de mercancía: +${cant} ${prod.unidad_medida || ''} de "${prod.nombre || 'producto'}" en ${sedeRes.rows[0]?.nombre || 'sede'} → ahora ${Number(upd.rows[0].stock_actual)}`,
+        });
+        return res.status(200).json({ ok: true, stockActual: upd.rows[0].stock_actual });
+      }
       if (stockMinimo === undefined && stockActual === undefined && disponible === undefined && fechaCaducidad === undefined) {
         return res.status(400).json({ error: 'Nada que actualizar' });
       }

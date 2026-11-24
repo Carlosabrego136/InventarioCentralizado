@@ -16,6 +16,7 @@ const TIPO_LABEL = {
   producto_asignado: 'Producto agregado a tienda',
   producto_quitado_tienda: 'Producto quitado de tienda',
   stock_corregido: 'Stock corregido',
+  entrada_mercancia: 'Entrada de mercancía',
   minimo_editado: 'Mínimo editado',
   caducidad_editada: 'Caducidad editada',
   gasto_registrado: 'Gasto registrado',

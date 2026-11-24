@@ -193,3 +193,14 @@ npm run db:migrar
 Aplica solo las migraciones de `db/schema.sql` (idempotentes). A diferencia de
 `db:init`, NO carga productos de ejemplo ni borra nada. Úsalo cuando se agregue
 una columna o se corrija la estructura de la base.
+
+## Inventario: buscador y entrada de mercancía
+
+En **Inventario** hay un buscador que filtra mientras escribes (sin importar
+mayúsculas ni acentos). Para resurtir, escribe lo que llegó en **Entrada (+)**:
+se suma al stock al guardar (la suma la hace la base de datos, así que no se
+pisa si se vende algo en el POS mientras capturas) y queda en la bitácora.
+La columna **Stock** sigue sirviendo para corregir después de un conteo físico.
+
+Teclado: Enter/↓ pasa del buscador a la cantidad, ↑/↓ cambia de producto,
+Enter regresa al buscador y Ctrl+S guarda.
