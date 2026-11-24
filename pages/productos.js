@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getSession } from '../lib/auth';
 
 export async function getServerSideProps({ req }) {
@@ -9,6 +9,9 @@ export async function getServerSideProps({ req }) {
 
 const UNIDADES = ['kg', 'gr', 'lt', 'pza'];
 
+// Búsqueda sin importar acentos ni mayúsculas.
+const normalizar = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
 export default function Productos() {
   const [sedes, setSedes] = useState([]);
   const [productos, setProductos] = useState([]);
@@ -18,6 +21,8 @@ export default function Productos() {
   const [msg, setMsg] = useState(null);
   const [pendientes, setPendientes] = useState({}); // { [id]: {nombre, unidadMedida, precioVenta} }
   const [guardando, setGuardando] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
+  const buscadorRef = useRef(null);
 
   function cargar() {
     Promise.all([
@@ -150,6 +155,39 @@ export default function Productos() {
     cargar();
   }
 
+  // Filtro del catálogo: todas las palabras deben aparecer en el nombre, SKU,
+  // categoría o marca. Se busca sobre lo ya guardado (no sobre lo que se está
+  // escribiendo), así la fila no desaparece mientras se edita su nombre.
+  const palabras = normalizar(busqueda).split(/\s+/).filter(Boolean);
+  const visibles = palabras.length === 0
+    ? productos
+    : productos.filter((p) => {
+        const texto = [p.nombre, p.sku_codigo, p.categoria, p.marca].map(normalizar).join(' ');
+        return palabras.every((w) => texto.includes(w));
+      });
+  const idsVisibles = new Set(visibles.map((p) => p.id));
+  const idsPendientes = Object.keys(pendientes).map(Number);
+  const pendientesOcultos = idsPendientes.filter((id) => !idsVisibles.has(id)).length;
+
+  function enfocarBuscador() {
+    const el = buscadorRef.current;
+    if (el) { el.focus(); el.select(); }
+  }
+  function enfocarFila(i) {
+    const el = document.querySelector(`[data-fila-nombre="${i}"]`);
+    if (el) {
+      el.focus();
+      // El cursor queda al final del nombre (sin seleccionarlo), para que
+      // escribir AGREGUE al nombre y nunca lo borre por accidente.
+      const n = el.value.length;
+      try { el.setSelectionRange(n, n); } catch (e) { /* nada */ }
+    }
+  }
+  // Enter en nombre o precio: regresa al buscador para seguir con el siguiente.
+  function enterVuelveABuscar(e) {
+    if (e.key === 'Enter') { e.preventDefault(); enfocarBuscador(); }
+  }
+
   return (
     <div>
       <header className="topbar">
@@ -161,7 +199,7 @@ export default function Productos() {
         <h2 className="panel-title">Nuevo producto</h2>
         <div className="help-box">
           <strong>SKU</strong>: código interno opcional, solo para identificarlo (puedes dejarlo vacío).<br/>
-          <strong>Precio</strong>: el precio de venta base — se puede ajustar puntualmente al cobrar sin cambiar este valor general.<br/>
+          <strong>Precio</strong>: el precio de venta — el punto de venta siempre cobra este precio (o el de mayoreo, si aplica); el cajero ya no lo puede cambiar.<br/>
           <strong>Costo de compra</strong>: opcional — lo que TE cuesta a ti. Con esto el sistema calcula tu % de utilidad automático.<br/>
           <strong>Categoría / Marca</strong>: opcionales, solo para organizar y filtrar más fácil después.<br/>
           <strong>Precio mayoreo</strong>: opcional — si vendes 5kg o más (tú decides desde cuánto), se puede aplicar este precio especial en vez del normal, sin que el cajero tenga que hacer cuentas.<br/>
@@ -262,6 +300,29 @@ export default function Productos() {
         <h2 className="panel-title">Catálogo completo</h2>
         {loading ? <p className="empty-state">Cargando…</p> : (
           <>
+            <div className="inv-buscador">
+              <input
+                ref={buscadorRef}
+                type="text"
+                autoComplete="off"
+                className="inv-buscador-input"
+                placeholder="Buscar producto por nombre, código, categoría o marca…"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); enfocarFila(0); }
+                  else if (e.key === 'Escape') setBusqueda('');
+                }}
+              />
+              <span className="inv-contador">
+                {palabras.length === 0 ? `${productos.length} productos` : `${visibles.length} de ${productos.length}`}
+              </span>
+            </div>
+            <div className="inv-atajos">
+              <span><kbd>Enter</kbd> ir al nombre del primero</span>
+              <span><kbd>Enter</kbd> en nombre o precio: volver a buscar</span>
+              <span><kbd>Esc</kbd> limpiar búsqueda</span>
+            </div>
             <table>
               <thead>
                 <tr>
@@ -273,7 +334,10 @@ export default function Productos() {
                 </tr>
               </thead>
               <tbody>
-                {productos.map((p) => {
+                {visibles.length === 0 && (
+                  <tr><td colSpan={12} className="empty-state">Ningún producto coincide con "{busqueda}".</td></tr>
+                )}
+                {visibles.map((p, idx) => {
                   const pend = pendientes[p.id] || {};
                   const precioVal = pend.precioVenta !== undefined ? pend.precioVenta : p.precio_venta;
                   const costoVal = pend.costoCompra !== undefined ? pend.costoCompra : (p.costo_compra ?? '');
@@ -283,8 +347,14 @@ export default function Productos() {
                       <td className="mono dim">{p.sku_codigo || '—'}</td>
                       <td>
                         <input
+                          data-fila-nombre={idx}
                           value={pend.nombre !== undefined ? pend.nombre : p.nombre}
                           onChange={(e) => editarCampo(p.id, 'nombre', e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') { e.preventDefault(); enfocarBuscador(); }
+                            else if (e.key === 'ArrowDown') { e.preventDefault(); enfocarFila(idx + 1); }
+                            else if (e.key === 'ArrowUp') { e.preventDefault(); if (idx === 0) enfocarBuscador(); else enfocarFila(idx - 1); }
+                          }}
                         />
                       </td>
                       <td>
@@ -300,6 +370,7 @@ export default function Productos() {
                           className="min-input" type="number" min="0" step="0.01"
                           value={precioVal}
                           onChange={(e) => editarCampo(p.id, 'precioVenta', e.target.value)}
+                          onKeyDown={enterVuelveABuscar}
                         />
                       </td>
                       <td className="num">
@@ -374,7 +445,9 @@ export default function Productos() {
 
             <div className="save-bar">
               <span className="dim" style={{ fontSize: 13.5 }}>
-                {hayPendientes ? 'Tienes cambios sin guardar' : 'Todo guardado'}
+                {hayPendientes
+                  ? `${idsPendientes.length} producto(s) con cambios sin guardar${pendientesOcultos > 0 ? ` (${pendientesOcultos} fuera de la búsqueda actual; también se guardan)` : ''}`
+                  : 'Todo guardado'}
               </span>
               <button className="btn" disabled={!hayPendientes || guardando} onClick={guardarCambios}>
                 {guardando ? 'Guardando…' : 'Guardar cambios'}
