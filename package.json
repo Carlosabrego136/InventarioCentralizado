@@ -8,7 +8,8 @@
     "start": "next start",
     "db:init": "node db/init.js",
     "db:limpiar": "node db/limpiar.js",
-    "db:importar": "node db/importar.js"
+    "db:importar": "node db/importar.js",
+    "db:migrar": "node db/migrar.js"
   },
   "dependencies": {
     "next": "13.5.6",

@@ -183,3 +183,13 @@ npm run db:importar -- ruta/al/archivo.csv --tienda "Zaragoza centro" --guardar
 - Se puede cargar una tienda a la vez. Los productos que ya existen (mismo nombre) se reutilizan sin cambiar su precio.
 - El archivo `reporte-carga.txt` lista lo que hay que revisar (negativos, ceros, mayoreos raros).
 - **No corras `npm run db:init` después de limpiar**: vuelve a meter los productos de ejemplo.
+
+## Migraciones sin tocar datos
+
+```bash
+npm run db:migrar
+```
+
+Aplica solo las migraciones de `db/schema.sql` (idempotentes). A diferencia de
+`db:init`, NO carga productos de ejemplo ni borra nada. Úsalo cuando se agregue
+una columna o se corrija la estructura de la base.

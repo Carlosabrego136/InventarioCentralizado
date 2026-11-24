@@ -166,13 +166,18 @@ ALTER TABLE ventas ADD COLUMN IF NOT EXISTS metodo_pago VARCHAR(20) NOT NULL DEF
 CREATE TABLE IF NOT EXISTS usuarios (
     id SERIAL PRIMARY KEY,
     usuario VARCHAR(40) NOT NULL UNIQUE,       -- login, en minúsculas
-    password_hash VARCHAR(160) NOT NULL,
+    password_hash TEXT NOT NULL,
     nombre VARCHAR(100) NOT NULL,              -- nombre real del trabajador
     rol VARCHAR(20) NOT NULL CHECK (rol IN ('admin','tienda')),
     sede_id INT REFERENCES sedes(id),          -- NULL si rol='admin'
     activo BOOLEAN NOT NULL DEFAULT TRUE,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Corrección: el hash scrypt (salt:hash) mide 161 caracteres y la columna
+-- original era VARCHAR(160), así que crear usuarios fallaba siempre.
+-- Segura de correr varias veces; en tablas ya creadas amplía la columna.
+ALTER TABLE usuarios ALTER COLUMN password_hash TYPE TEXT;
 
 -- ============================================================
 -- Migración: nombres reales de las sedes (Cristian los mandó por
