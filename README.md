@@ -162,3 +162,24 @@ nada configurado, el ticket usa el mensaje genérico de siempre.
 
 ⚠️ Corre `npm run db:init` de nuevo — agrega 3 columnas nuevas a `sedes`
 (`recibo_direccion`, `recibo_telefono`, `recibo_mensaje`).
+
+## Cargar el catálogo real de una tienda (desde CSV)
+
+```bash
+# 1) (solo la primera vez, para borrar las pruebas) ver qué se borraría
+npm run db:limpiar
+#    y borrar de verdad:
+npm run db:limpiar -- --confirmar
+
+# 2) PRUEBA de la carga: muestra el resumen y NO guarda nada
+npm run db:importar -- ruta/al/archivo.csv --tienda "Zaragoza centro"
+
+# 3) Guardar de verdad
+npm run db:importar -- ruta/al/archivo.csv --tienda "Zaragoza centro" --guardar
+```
+
+- Existencia negativa se carga en 0; no se cargan caducidades.
+- Si una tienda ya tiene inventario, la carga se niega (para no pisar correcciones); `--forzar` la permite.
+- Se puede cargar una tienda a la vez. Los productos que ya existen (mismo nombre) se reutilizan sin cambiar su precio.
+- El archivo `reporte-carga.txt` lista lo que hay que revisar (negativos, ceros, mayoreos raros).
+- **No corras `npm run db:init` después de limpiar**: vuelve a meter los productos de ejemplo.
