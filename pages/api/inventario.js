@@ -32,8 +32,20 @@ export default async function handler(req, res) {
 
   if (req.method === 'PATCH') {
     try {
-      const { productoId, stockMinimo, stockActual, disponible, fechaCaducidad, entrada } = req.body;
+      const { productoId, disponible, fechaCaducidad, entrada } = req.body;
+      let { stockMinimo, stockActual } = req.body;
       if (productoId === undefined) return res.status(400).json({ error: 'Faltan datos' });
+
+      // Stock y mínimo: número entre 0 y 9,999,999.999 (la base guarda 3 decimales).
+      for (const [campo, nombre] of [['stockMinimo', 'El mínimo'], ['stockActual', 'El stock']]) {
+        const v = campo === 'stockMinimo' ? stockMinimo : stockActual;
+        if (v === undefined || v === null) continue;
+        const n = Math.round(Number(v) * 1000) / 1000;
+        if (v === '' || !Number.isFinite(n) || n < 0 || n >= 10000000) {
+          return res.status(400).json({ error: `${nombre} debe ser un número entre 0 y 9,999,999` });
+        }
+        if (campo === 'stockMinimo') stockMinimo = n; else stockActual = n;
+      }
 
       // ---- Entrada de mercancía (resurtido): se SUMA al stock actual ----
       // La suma la hace la base de datos en una sola sentencia, así que si en
@@ -97,12 +109,12 @@ export default async function handler(req, res) {
 
       await query(
         `INSERT INTO inventario_sedes (sede_id, producto_id, stock_actual, stock_minimo, activo, fecha_caducidad)
-         VALUES ($1, $2, COALESCE($4, 0), COALESCE($3, 0), COALESCE($5, true), $6)
+         VALUES ($1, $2, COALESCE($4::numeric, 0), COALESCE($3::numeric, 0), COALESCE($5::boolean, true), $6::date)
          ON CONFLICT (sede_id, producto_id) DO UPDATE SET
-           stock_minimo = COALESCE($3, inventario_sedes.stock_minimo),
-           stock_actual = COALESCE($4, inventario_sedes.stock_actual),
-           activo = COALESCE($5, inventario_sedes.activo),
-           fecha_caducidad = CASE WHEN $6::date IS NOT NULL OR $7 THEN $6 ELSE inventario_sedes.fecha_caducidad END,
+           stock_minimo = COALESCE($3::numeric, inventario_sedes.stock_minimo),
+           stock_actual = COALESCE($4::numeric, inventario_sedes.stock_actual),
+           activo = COALESCE($5::boolean, inventario_sedes.activo),
+           fecha_caducidad = CASE WHEN $6::date IS NOT NULL OR $7::boolean THEN $6::date ELSE inventario_sedes.fecha_caducidad END,
            alerta_desde = ${alertaDesdeSql}`,
         [...params, fechaCaducidad !== undefined]
       );
