@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getSession } from '../lib/auth';
 import { formatFechaHora } from '../lib/format';
 import { descargarCSV } from '../lib/csv';
+import { hoyMX, sumarDias, fechaCorta } from '../lib/fechas';
 import { CurvaGanancias, BarrasComparativo } from '../components/Charts';
 
 export async function getServerSideProps({ req }) {
@@ -10,12 +11,9 @@ export async function getServerSideProps({ req }) {
   return { props: {} };
 }
 
-function hoyISO() { return new Date().toISOString().slice(0, 10); }
-function hace30diasISO() {
-  const d = new Date();
-  d.setDate(d.getDate() - 29);
-  return d.toISOString().slice(0, 10);
-}
+// Fechas por defecto en hora de México (no en UTC).
+function hoyISO() { return hoyMX(); }
+function hace30diasISO() { return sumarDias(hoyMX(), -29); }
 
 export default function Finanzas() {
   const [sedes, setSedes] = useState([]);
@@ -86,7 +84,7 @@ export default function Finanzas() {
 
   function exportarGastosCSV() {
     const filas = gastos.map((g) => [
-      new Date(g.fecha).toLocaleDateString('es-MX'), g.concepto, g.categoria || '', g.sede_nombre || 'General', Number(g.monto).toFixed(2),
+      fechaCorta(g.fecha), g.concepto, g.categoria || '', g.sede_nombre || 'General', Number(g.monto).toFixed(2),
     ]);
     descargarCSV(`gastos_${desde}_a_${hasta}.csv`,
       ['Fecha', 'Concepto', 'Categoría', 'Sede', 'Monto'], filas);
@@ -224,7 +222,7 @@ export default function Finanzas() {
             <tbody>
               {gastos.map((g) => (
                 <tr key={g.id}>
-                  <td className="mono dim">{new Date(g.fecha).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                  <td className="mono dim">{fechaCorta(g.fecha)}</td>
                   <td>{g.concepto}</td>
                   <td>{g.categoria || '—'}</td>
                   <td>{g.sede_nombre || 'General'}</td>

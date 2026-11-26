@@ -1,14 +1,10 @@
 import { query } from '../../lib/db';
 import { requireSession } from '../../lib/auth';
+import { diaMX, hoyMX, sumarDias, esFechaISO } from '../../lib/fechas';
 
 function rangoDias(desde, hasta) {
   const dias = [];
-  let d = new Date(desde + 'T00:00:00');
-  const fin = new Date(hasta + 'T00:00:00');
-  while (d <= fin) {
-    dias.push(d.toISOString().slice(0, 10));
-    d.setDate(d.getDate() + 1);
-  }
+  for (let d = desde; d <= hasta && dias.length < 800; d = sumarDias(d, 1)) dias.push(d);
   return dias;
 }
 
@@ -19,28 +15,32 @@ export default async function handler(req, res) {
 
   try {
     const { sedeId } = req.query;
-    const hoy = new Date().toISOString().slice(0, 10);
-    const desde = req.query.desde || new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
+    // "Hoy" y los días de cada venta se cuentan en hora de México.
+    const hoy = hoyMX();
+    const desde = req.query.desde || sumarDias(hoy, -29);
     const hasta = req.query.hasta || hoy;
+    if (!esFechaISO(desde) || !esFechaISO(hasta)) {
+      return res.status(400).json({ error: 'Fecha no válida' });
+    }
 
     const baseParams = [desde, hasta];
     const filtroVentas = sedeId ? 'AND v.sede_id = $3' : '';
     const paramsVentas = sedeId ? [...baseParams, sedeId] : baseParams;
 
     const { rows: ingresosRows } = await query(
-      `SELECT to_char(v.fecha, 'YYYY-MM-DD') AS dia, SUM(v.total) AS total
+      `SELECT to_char(${diaMX('v.fecha')}, 'YYYY-MM-DD') AS dia, SUM(v.total) AS total
        FROM ventas v
-       WHERE v.fecha::date BETWEEN $1 AND $2 ${filtroVentas}
+       WHERE ${diaMX('v.fecha')} BETWEEN $1 AND $2 ${filtroVentas}
        GROUP BY dia`,
       paramsVentas
     );
 
     const { rows: costoRows } = await query(
-      `SELECT to_char(v.fecha, 'YYYY-MM-DD') AS dia, SUM(d.cantidad * COALESCE(p.costo_compra,0)) AS total
+      `SELECT to_char(${diaMX('v.fecha')}, 'YYYY-MM-DD') AS dia, SUM(d.cantidad * COALESCE(p.costo_compra,0)) AS total
        FROM ventas v
        JOIN detalle_ventas d ON d.venta_id = v.id
        LEFT JOIN productos p ON p.id = d.producto_id
-       WHERE v.fecha::date BETWEEN $1 AND $2 ${filtroVentas}
+       WHERE ${diaMX('v.fecha')} BETWEEN $1 AND $2 ${filtroVentas}
        GROUP BY dia`,
       paramsVentas
     );
@@ -81,7 +81,7 @@ export default async function handler(req, res) {
     const { rows: ingresoPorSede } = await query(
       `SELECT s.id AS sede_id, s.nombre AS sede_nombre, COALESCE(SUM(v.total),0) AS ingresos
        FROM sedes s
-       LEFT JOIN ventas v ON v.sede_id = s.id AND v.fecha::date BETWEEN $1 AND $2
+       LEFT JOIN ventas v ON v.sede_id = s.id AND ${diaMX('v.fecha')} BETWEEN $1 AND $2
        GROUP BY s.id, s.nombre
        ORDER BY s.id`,
       baseParams
@@ -91,7 +91,7 @@ export default async function handler(req, res) {
        FROM ventas v
        JOIN detalle_ventas d ON d.venta_id = v.id
        LEFT JOIN productos p ON p.id = d.producto_id
-       WHERE v.fecha::date BETWEEN $1 AND $2
+       WHERE ${diaMX('v.fecha')} BETWEEN $1 AND $2
        GROUP BY v.sede_id`,
       baseParams
     );

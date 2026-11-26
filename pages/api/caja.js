@@ -1,5 +1,6 @@
 import { query } from '../../lib/db';
 import { requireSession } from '../../lib/auth';
+import { esFechaISO, inicioDiaSQL, inicioDiaSiguienteSQL } from '../../lib/fechas';
 
 // Vista de solo lectura para Cristian: historial de cortes de caja de
 // cualquier tienda. La apertura/corte/retiro real se hace en el punto
@@ -11,11 +12,15 @@ export default async function handler(req, res) {
 
   try {
     const { sedeId, desde, hasta } = req.query;
+    if ((desde && !esFechaISO(desde)) || (hasta && !esFechaISO(hasta))) {
+      return res.status(400).json({ error: 'Fecha no válida' });
+    }
     const params = [];
     const cond = [];
     if (sedeId) { params.push(sedeId); cond.push(`c.sede_id = $${params.length}`); }
-    if (desde) { params.push(desde); cond.push(`c.fecha >= $${params.length}`); }
-    if (hasta) { params.push(hasta); cond.push(`c.fecha <= $${params.length}::date + interval '1 day'`); }
+    // Los días se cuentan en hora de México (12:00 am a 12:00 am).
+    if (desde) { params.push(desde); cond.push(`c.fecha >= ${inicioDiaSQL(`$${params.length}`)}`); }
+    if (hasta) { params.push(hasta); cond.push(`c.fecha < ${inicioDiaSiguienteSQL(`$${params.length}`)}`); }
     const where = cond.length ? `WHERE ${cond.join(' AND ')}` : '';
 
     const { rows } = await query(

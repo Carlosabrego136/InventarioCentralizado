@@ -1,5 +1,6 @@
 import { query, logEvento } from '../../lib/db';
 import { requireSession } from '../../lib/auth';
+import { hoyMX_SQL } from '../../lib/fechas';
 
 export default async function handler(req, res) {
   const session = requireSession(req, res);
@@ -21,7 +22,7 @@ export default async function handler(req, res) {
       const where = cond.length ? `WHERE ${cond.join(' AND ')}` : '';
 
       const { rows } = await query(
-        `SELECT g.*, s.nombre AS sede_nombre
+        `SELECT g.*, to_char(g.fecha, 'YYYY-MM-DD') AS fecha, s.nombre AS sede_nombre
          FROM gastos g
          LEFT JOIN sedes s ON s.id = g.sede_id
          ${where}
@@ -44,7 +45,7 @@ export default async function handler(req, res) {
       }
       const { rows } = await query(
         `INSERT INTO gastos (sede_id, concepto, categoria, monto, fecha)
-         VALUES ($1,$2,$3,$4, COALESCE($5, CURRENT_DATE)) RETURNING *`,
+         VALUES ($1,$2,$3,$4, COALESCE($5::date, ${hoyMX_SQL})) RETURNING *`,
         [sedeId || null, concepto, categoria || null, monto, fecha || null]
       );
 

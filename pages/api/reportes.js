@@ -1,13 +1,19 @@
 import { query, logEvento } from '../../lib/db';
 import { requireSession } from '../../lib/auth';
+import { esFechaISO, inicioDiaSQL, inicioDiaSiguienteSQL } from '../../lib/fechas';
 
 function construirFiltro(query_params) {
   const { sedeId, desde, hasta } = query_params;
+  // Una fecha mal escrita NUNCA se ignora (en "limpiar" borraría de más).
+  if ((desde && !esFechaISO(desde)) || (hasta && !esFechaISO(hasta))) {
+    return { error: 'Fecha no válida' };
+  }
   const params = [];
   const condiciones = [];
   if (sedeId) { params.push(sedeId); condiciones.push(`v.sede_id = $${params.length}`); }
-  if (desde) { params.push(desde); condiciones.push(`v.fecha >= $${params.length}`); }
-  if (hasta) { params.push(hasta); condiciones.push(`v.fecha <= $${params.length}::timestamp + interval '1 day'`); }
+  // Los días se cuentan en hora de México: de las 12:00 am a las 12:00 am.
+  if (desde) { params.push(desde); condiciones.push(`v.fecha >= ${inicioDiaSQL(`$${params.length}`)}`); }
+  if (hasta) { params.push(hasta); condiciones.push(`v.fecha < ${inicioDiaSiguienteSQL(`$${params.length}`)}`); }
   const where = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
   return { where, params };
 }
@@ -18,7 +24,8 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
-      const { where, params } = construirFiltro(req.query);
+      const { where, params, error } = construirFiltro(req.query);
+      if (error) return res.status(400).json({ error });
 
       const { rows: detalle } = await query(
         `SELECT v.id AS venta_id, v.fecha, v.sede_id, s.nombre AS sede_nombre,
@@ -55,7 +62,8 @@ export default async function handler(req, res) {
 
   if (req.method === 'DELETE') {
     try {
-      const { where, params } = construirFiltro(req.query);
+      const { where, params, error } = construirFiltro(req.query);
+      if (error) return res.status(400).json({ error });
       // Solo permitimos limpiar lo que coincide con el filtro actual —
       // nunca un "borra todo" implícito sin haber elegido rango/tienda.
       if (!where) {

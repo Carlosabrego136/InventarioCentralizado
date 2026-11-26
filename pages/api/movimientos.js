@@ -1,5 +1,6 @@
 import { query } from '../../lib/db';
 import { requireSession } from '../../lib/auth';
+import { esFechaISO, inicioDiaSQL, inicioDiaSiguienteSQL } from '../../lib/fechas';
 
 // Vista de solo lectura: historial de depósitos/retiros de efectivo,
 // de cualquier tienda. Se registran desde el punto de venta.
@@ -10,11 +11,15 @@ export default async function handler(req, res) {
 
   try {
     const { sedeId, desde, hasta } = req.query;
+    if ((desde && !esFechaISO(desde)) || (hasta && !esFechaISO(hasta))) {
+      return res.status(400).json({ error: 'Fecha no válida' });
+    }
     const params = [];
     const cond = [];
     if (sedeId) { params.push(sedeId); cond.push(`m.sede_id = $${params.length}`); }
-    if (desde) { params.push(desde); cond.push(`m.fecha >= $${params.length}`); }
-    if (hasta) { params.push(hasta); cond.push(`m.fecha <= $${params.length}::date + interval '1 day'`); }
+    // Los días se cuentan en hora de México (12:00 am a 12:00 am).
+    if (desde) { params.push(desde); cond.push(`m.fecha >= ${inicioDiaSQL(`$${params.length}`)}`); }
+    if (hasta) { params.push(hasta); cond.push(`m.fecha < ${inicioDiaSiguienteSQL(`$${params.length}`)}`); }
     const where = cond.length ? `WHERE ${cond.join(' AND ')}` : '';
 
     const { rows } = await query(

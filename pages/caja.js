@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getSession } from '../lib/auth';
 import { formatFechaHora } from '../lib/format';
 import { descargarCSV } from '../lib/csv';
+import { hoyMX, sumarDias } from '../lib/fechas';
 
 export async function getServerSideProps({ req }) {
   const session = getSession(req);
@@ -9,12 +10,9 @@ export async function getServerSideProps({ req }) {
   return { props: {} };
 }
 
-function hoyISO() { return new Date().toISOString().slice(0, 10); }
-function hace7diasISO() {
-  const d = new Date();
-  d.setDate(d.getDate() - 7);
-  return d.toISOString().slice(0, 10);
-}
+// Fechas por defecto en hora de México (no en UTC).
+function hoyISO() { return hoyMX(); }
+function hace7diasISO() { return sumarDias(hoyMX(), -7); }
 
 const TIPO_LABEL = { apertura: 'Apertura', intermedio: 'Corte intermedio', cierre: 'Cierre' };
 

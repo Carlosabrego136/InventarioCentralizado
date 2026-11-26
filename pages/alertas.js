@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { formatFechaHora } from '../lib/format';
 import { getSession } from '../lib/auth';
+import { fechaCorta } from '../lib/fechas';
 
 export async function getServerSideProps({ req }) {
   const session = getSession(req);
@@ -74,7 +75,7 @@ export default function Alertas() {
               <div>
                 <div className="t1">{a.producto_nombre} <span className="dim" style={{ fontWeight: 400 }}>· {a.sede_nombre}</span></div>
                 <div className="t2">
-                  {a.ya_caduco ? 'Caducó el' : 'Caduca el'} {new Date(a.fecha_caducidad).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                  {a.ya_caduco ? 'Caducó el' : 'Caduca el'} {fechaCorta(a.fecha_caducidad)}
                 </div>
               </div>
               <span className="badge low">{a.ya_caduco ? 'CADUCADO' : 'PRÓXIMO A CADUCAR'}</span>

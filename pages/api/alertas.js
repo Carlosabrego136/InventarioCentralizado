@@ -1,5 +1,6 @@
 import { query } from '../../lib/db';
 import { requireSession } from '../../lib/auth';
+import { hoyMX_SQL } from '../../lib/fechas';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Método no permitido' });
@@ -21,14 +22,14 @@ export default async function handler(req, res) {
     const { rows: caducidad } = await query(
       `SELECT s.id AS sede_id, s.nombre AS sede_nombre,
               p.id AS producto_id, p.nombre AS producto_nombre, p.unidad_medida,
-              i.fecha_caducidad,
-              (i.fecha_caducidad < CURRENT_DATE) AS ya_caduco
+              to_char(i.fecha_caducidad, 'YYYY-MM-DD') AS fecha_caducidad,
+              (i.fecha_caducidad < ${hoyMX_SQL}) AS ya_caduco
        FROM inventario_sedes i
        JOIN sedes s ON s.id = i.sede_id
        JOIN productos p ON p.id = i.producto_id
        WHERE i.activo = true AND p.activo = true
              AND i.fecha_caducidad IS NOT NULL
-             AND i.fecha_caducidad <= CURRENT_DATE + INTERVAL '15 days'
+             AND i.fecha_caducidad <= ${hoyMX_SQL} + INTERVAL '15 days'
        ORDER BY i.fecha_caducidad ASC`
     );
 
